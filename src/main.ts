@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import * as compression from 'compression';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 
-import { AppModule } from './app.module';
 import { AppConfigService } from './config/app-config.service';
 import useSwagger from './swagger';
 

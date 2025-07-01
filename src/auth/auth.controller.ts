@@ -7,8 +7,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -28,16 +27,16 @@ export class AuthController {
     return await this.authService.register(res, dto);
   }
 
+  @LocalAuth()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @LocalAuth()
   async login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return await this.authService.login(req, res);
   }
 
+  @JwtAuth()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @JwtAuth()
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -45,9 +44,9 @@ export class AuthController {
     return await this.authService.refresh(req, res);
   }
 
+  @JwtAuth()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @JwtAuth()
   async logout(
     @Res({ passthrough: true }) res: Response,
     @CurrentUser('id') id: string,

@@ -1,6 +1,5 @@
+import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-
-import type { INestApplication } from '@nestjs/common';
 
 export default (app: INestApplication) => {
   const config = new DocumentBuilder()

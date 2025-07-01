@@ -4,11 +4,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { isObservable, lastValueFrom } from 'rxjs';
-
-import type { Request } from 'express';
 
 import { LoginDto } from '../dto/login.dto';
 

@@ -51,7 +51,7 @@ export class AuthService {
   }
 
   async logout(res: Response, id: string) {
-    await this.usersService.updateRefreshToken(id, null);
+    await this.usersService.updateRefreshTokenById(id, null);
 
     this.setCookie(res, '', 0);
   }
@@ -60,7 +60,7 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.generateTokens(id);
 
     const hashed = await bcrypt.hash(refreshToken, 8);
-    await this.usersService.updateRefreshToken(id, hashed);
+    await this.usersService.updateRefreshTokenById(id, hashed);
 
     this.setCookie(res, refreshToken, this.configService.refreshExpiresIn);
 

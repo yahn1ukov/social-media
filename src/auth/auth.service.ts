@@ -17,10 +17,13 @@ export class AuthService {
   ) {}
 
   async register(res: Response, dto: RegisterDto) {
-    const hashed = await bcrypt.hash(dto.password, 8);
-    const user = await this.usersService.create({ ...dto, password: hashed });
+    const hashedPassword = await bcrypt.hash(dto.password, 8);
+    const user = await this.usersService.create({
+      ...dto,
+      password: hashedPassword,
+    });
 
-    return this.auth(res, user.id);
+    return this.auth(res, user!.id);
   }
 
   async login(req: Request, res: Response) {
@@ -42,8 +45,11 @@ export class AuthService {
       throw new UnauthorizedException('Unauthorized');
     }
 
-    const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
-    if (!isMatch) {
+    const isRefreshTokenMatch = await bcrypt.compare(
+      refreshToken,
+      user.refreshToken,
+    );
+    if (!isRefreshTokenMatch) {
       throw new UnauthorizedException('Unauthorized');
     }
 
@@ -59,8 +65,8 @@ export class AuthService {
   private async auth(res: Response, id: string) {
     const { accessToken, refreshToken } = await this.generateTokens(id);
 
-    const hashed = await bcrypt.hash(refreshToken, 8);
-    await this.usersService.updateRefreshTokenById(id, hashed);
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 8);
+    await this.usersService.updateRefreshTokenById(id, hashedRefreshToken);
 
     this.setCookie(res, refreshToken, this.configService.refreshExpiresIn);
 

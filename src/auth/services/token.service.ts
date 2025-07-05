@@ -12,18 +12,18 @@ export class TokenService {
   ) {}
 
   async generateAccessToken(payload: JwtPayload) {
-    return this.jwtService.signAsync(payload, {
+    return await this.jwtService.signAsync(payload, {
       expiresIn: this.configService.accessExpiresIn,
     });
   }
 
   async generateRefreshToken(payload: JwtPayload) {
-    return this.jwtService.signAsync(payload, {
+    return await this.jwtService.signAsync(payload, {
       expiresIn: this.configService.refreshExpiresIn,
     });
   }
 
   async verify(token: string): Promise<JwtPayload> {
-    return this.jwtService.verifyAsync(token);
+    return await this.jwtService.verifyAsync(token);
   }
 }

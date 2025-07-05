@@ -9,11 +9,15 @@ import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '@/prisma/prisma.service';
+import { FilesService } from '@/files/files.service';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
 
   async findById(id: string) {
     return await this.prismaService.user.findUnique({
@@ -21,7 +25,6 @@ export class UsersService {
       select: {
         id: true,
         refreshToken: true,
-        password: true,
       },
     });
   }
@@ -43,13 +46,7 @@ export class UsersService {
         select: { id: true },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('User already exists');
-        }
-      }
-
-      throw new InternalServerErrorException('Error creating user');
+      this.handleError(error);
     }
   }
 
@@ -59,63 +56,64 @@ export class UsersService {
         where: { id },
         select: {
           id: true,
-          avatarUrl: true,
+          avatar: {
+            select: { url: true },
+          },
           displayName: true,
           username: true,
           bio: true,
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('User not found');
-        }
-      }
-
-      throw new InternalServerErrorException('Error getting user');
+      this.handleError(error);
     }
   }
 
-  async updateById(id: string, data: Prisma.UserUpdateInput) {
+  async updateById(
+    id: string,
+    data: Prisma.UserUpdateInput,
+    avatar?: Express.Multer.File,
+  ) {
     try {
       await this.prismaService.user.update({
         where: { id },
         data,
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('User already exists');
-        }
-        if (error.code === 'P2025') {
-          throw new NotFoundException('User not found');
-        }
-      }
 
-      throw new InternalServerErrorException('Error updating user');
+      if (avatar) {
+        await this.filesService.uploadAvatarByUserId(id, avatar);
+      }
+    } catch (error) {
+      this.handleError(error);
     }
   }
 
   async updatePasswordById(id: string, dto: UpdateUserPasswordDto) {
-    const user = await this.findById(id);
+    const user = await this.prismaService.user.findUnique({
+      where: { id },
+      select: { password: true },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const isMatch = await bcrypt.compare(dto.oldPassword, user.password);
-    if (!isMatch) {
+    const isPasswordMatch = await bcrypt.compare(
+      dto.oldPassword,
+      user.password,
+    );
+    if (!isPasswordMatch) {
       throw new BadRequestException('Incorrect password');
     }
 
-    const hashed = await bcrypt.hash(dto.newPassword, 8);
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 8);
 
     try {
       await this.prismaService.user.update({
         where: { id },
-        data: { password: hashed },
+        data: { password: hashedPassword },
       });
     } catch (error) {
-      throw new InternalServerErrorException('Failed to update password');
+      this.handleError(error);
     }
   }
 
@@ -126,29 +124,59 @@ export class UsersService {
         data: { refreshToken },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('User not found');
-        }
-      }
-
-      throw new InternalServerErrorException('Error updating refresh token');
+      this.handleError(error);
     }
   }
 
   async deleteById(id: string) {
     try {
+      const files = await this.prismaService.file.findMany({
+        where: {
+          OR: [{ userId: id }, { post: { authorId: id } }],
+        },
+        select: { url: true },
+      });
+
+      if (files.length) {
+        await Promise.all(
+          files.map((file) => {
+            return this.filesService.deleteMediaByUrl(file.url);
+          }),
+        );
+      }
+
       await this.prismaService.user.delete({
         where: { id },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('User not found');
-        }
-      }
-
-      throw new InternalServerErrorException('Error deleting user');
+      this.handleError(error);
     }
+  }
+
+  private handleError(error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (error.code) {
+        case 'P2002':
+          throw new ConflictException('User already exists');
+        case 'P2025':
+          throw new NotFoundException('User not found');
+        default:
+          throw new InternalServerErrorException('Database error occurred');
+      }
+    }
+
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new BadRequestException('Invalid data provided');
+    }
+
+    if (
+      error instanceof BadRequestException ||
+      error instanceof ConflictException ||
+      error instanceof NotFoundException
+    ) {
+      throw error;
+    }
+
+    throw new InternalServerErrorException('Failed to process User');
   }
 }

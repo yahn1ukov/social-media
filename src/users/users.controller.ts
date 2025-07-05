@@ -6,14 +6,18 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
 import { UsersService } from './users.service';
 import { Public } from '@/auth/decorators/public.decorator';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
-import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ParseAvatarPipe } from './pipes/parse-avatar.pipe';
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 
 @JwtAuth()
 @Controller('users')
@@ -40,8 +44,13 @@ export class UsersController {
   }
 
   @Patch('me')
-  async updateById(@CurrentUser('id') id: string, @Body() dto: UpdateUserDto) {
-    return await this.usersService.updateById(id, dto);
+  @UseInterceptors(FileInterceptor('avatar'))
+  async updateById(
+    @CurrentUser('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @UploadedFile(ParseAvatarPipe) avatar?: Express.Multer.File,
+  ) {
+    return await this.usersService.updateById(id, dto, avatar);
   }
 
   @Delete('me')

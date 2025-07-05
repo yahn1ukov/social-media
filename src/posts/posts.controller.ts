@@ -7,14 +7,18 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
 import { PostsService } from './posts.service';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
+import { ParseMediaPipe } from './pipes/parse-media.pipe';
 import { Public } from '@/auth/decorators/public.decorator';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @JwtAuth()
 @Controller('posts')
@@ -22,11 +26,13 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
+  @UseInterceptors(FilesInterceptor('media', 10))
   async create(
     @CurrentUser('id') userId: string,
-    @Body() createPostDto: CreatePostDto,
+    @Body() dto: CreatePostDto,
+    @UploadedFiles(ParseMediaPipe) media?: Array<Express.Multer.File>,
   ) {
-    return await this.postsService.create(userId, createPostDto);
+    return await this.postsService.create(userId, dto, media);
   }
 
   @Public()
@@ -47,12 +53,22 @@ export class PostsController {
   }
 
   @Patch(':id')
+  @UseInterceptors(FilesInterceptor('media', 10))
   async updateById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
-    @Body() updatePostDto: UpdatePostDto,
+    @Body() dto: UpdatePostDto,
+    @UploadedFiles(ParseMediaPipe) media?: Array<Express.Multer.File>,
   ) {
-    return await this.postsService.updateById(id, userId, updatePostDto);
+    const { deletedMediaIds, ...updatedPost } = dto;
+
+    return await this.postsService.updateById(
+      id,
+      userId,
+      updatedPost,
+      media,
+      deletedMediaIds,
+    );
   }
 
   @Delete(':id')

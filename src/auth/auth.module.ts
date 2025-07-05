@@ -3,9 +3,8 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 
 import { AppConfigService } from '@/config/app-config.service';
+import { UsersModule } from '@/users/users.module';
 import { AuthController } from './auth.controller';
-import { PrismaService } from '@/prisma/prisma.service';
-import { UsersService } from '@/users/users.service';
 import { TokenService } from './services/token.service';
 import { AuthService } from './auth.service';
 import { LocalStrategy } from './strategies/local.strategy';
@@ -22,11 +21,10 @@ import { JwtAuthGuard } from './guards/jwt.guard';
       }),
       inject: [AppConfigService],
     }),
+    UsersModule,
   ],
   controllers: [AuthController],
   providers: [
-    PrismaService,
-    UsersService,
     TokenService,
     AuthService,
     LocalStrategy,

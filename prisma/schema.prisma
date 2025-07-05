@@ -9,7 +9,7 @@ generator client {
 
 model User {
   id           String   @id @default(uuid())
-  avatarUrl    String?  @map("avatar_url")
+  avatar       File?
   displayName  String?  @map("display_name")
   username     String   @unique
   bio          String?  @db.Text
@@ -28,8 +28,28 @@ model Post {
   hashtags  String[] @default([])
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId  String   @map("author_id")
+  files     File[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@index([createdAt])
+  @@index([authorId, createdAt])
   @@map("posts")
+}
+
+model File {
+  id          String   @id @default(uuid())
+  name        String
+  size        Int
+  contentType String   @map("content_type")
+  url         String   @db.Text
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?  @unique @map("user_id")
+  post        Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId      String?  @map("post_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([postId])
+  @@map("files")
 }

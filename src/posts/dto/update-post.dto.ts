@@ -8,4 +8,8 @@ export class UpdatePostDto {
   @IsArray()
   @IsOptional()
   hashtags?: string[];
+
+  @IsArray()
+  @IsOptional()
+  deletedMediaIds?: string[];
 }

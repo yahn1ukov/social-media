@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -6,52 +8,79 @@ import {
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@/prisma/prisma.service';
+import { FilesService } from '@/files/files.service';
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
 
-  async create(userId: string, data: Omit<Prisma.PostCreateInput, 'author'>) {
+  async create(
+    userId: string,
+    data: Omit<Prisma.PostCreateInput, 'author'>,
+    media?: Array<Express.Multer.File>,
+  ) {
     try {
-      await this.prismaService.post.create({
+      const post = await this.prismaService.post.create({
         data: {
           ...data,
           author: {
             connect: { id: userId },
           },
         },
+        select: { id: true },
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Author not found');
-        }
-      }
 
-      throw new InternalServerErrorException('Error creating a post');
+      if (media?.length) {
+        await Promise.all(
+          media.map((file) =>
+            this.filesService.uploadMediaByPostIdAndUserId(
+              post.id,
+              userId,
+              file,
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      this.handleError(error);
     }
   }
 
   async getAll(userId?: string) {
     const where: Prisma.PostWhereInput = userId ? { authorId: userId } : {};
 
-    return await this.prismaService.post.findMany({
-      where,
-      select: {
-        id: true,
-        text: true,
-        hashtags: true,
-        author: {
-          select: {
-            id: true,
-            avatarUrl: true,
-            username: true,
+    try {
+      return await this.prismaService.post.findMany({
+        where,
+        select: {
+          id: true,
+          text: true,
+          hashtags: true,
+          author: {
+            select: {
+              avatar: {
+                select: { url: true },
+              },
+              username: true,
+            },
           },
+          files: {
+            select: {
+              id: true,
+              contentType: true,
+              url: true,
+            },
+          },
+          createdAt: true,
         },
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   async getById(id: string) {
@@ -64,55 +93,107 @@ export class PostsService {
           hashtags: true,
           author: {
             select: {
-              id: true,
-              avatarUrl: true,
+              avatar: {
+                select: { url: true },
+              },
               username: true,
+            },
+          },
+          files: {
+            select: {
+              id: true,
+              contentType: true,
+              url: true,
             },
           },
           createdAt: true,
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Post not found');
-        }
-      }
-
-      throw new InternalServerErrorException('Error getting the post');
+      this.handleError(error);
     }
   }
 
-  async updateById(id: string, userId: string, data: Prisma.PostUpdateInput) {
+  async updateById(
+    id: string,
+    userId: string,
+    data: Prisma.PostUpdateInput,
+    media?: Array<Express.Multer.File>,
+    deletedMediaIds?: string[],
+  ) {
     try {
       await this.prismaService.post.update({
-        where: { id, authorId: userId },
+        where: {
+          id,
+          authorId: userId,
+        },
         data,
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Post not found');
-        }
+
+      if (deletedMediaIds?.length) {
+        await this.filesService.deleteMediaByIds(id, deletedMediaIds);
       }
 
-      throw new InternalServerErrorException('Error updating post');
+      if (media?.length) {
+        await Promise.all(
+          media.map((file) =>
+            this.filesService.uploadMediaByPostIdAndUserId(id, userId, file),
+          ),
+        );
+      }
+    } catch (error) {
+      this.handleError(error);
     }
   }
 
   async deleteById(id: string, userId: string) {
     try {
-      await this.prismaService.post.delete({
-        where: { id, authorId: userId },
+      const files = await this.prismaService.file.findMany({
+        where: { postId: id },
+        select: { url: true },
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Post not found');
-        }
+
+      if (files.length) {
+        await Promise.all(
+          files.map((file) => {
+            return this.filesService.deleteMediaByUrl(file.url);
+          }),
+        );
       }
 
-      throw new InternalServerErrorException('Error deleting post');
+      await this.prismaService.post.delete({
+        where: {
+          id,
+          authorId: userId,
+        },
+      });
+    } catch (error) {
+      this.handleError(error);
     }
+  }
+
+  private handleError(error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (error.code) {
+        case 'P2025':
+          throw new NotFoundException('Post not found');
+        default:
+          throw new InternalServerErrorException('Database error occurred');
+      }
+    }
+
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new BadRequestException('Invalid data provided');
+    }
+
+    if (
+      error instanceof BadRequestException ||
+      error instanceof ConflictException ||
+      error instanceof NotFoundException
+    ) {
+      throw error;
+    }
+
+    throw new InternalServerErrorException('Failed to process Post');
   }
 }

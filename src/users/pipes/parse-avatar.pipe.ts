@@ -11,8 +11,8 @@ export class ParseAvatarPipe extends ParseFilePipe {
     super({
       fileIsRequired: false,
       validators: [
-        new MaxFileSizeValidator({ maxSize: 1024 * 100 }),
-        new FileTypeValidator({ fileType: /(png|jpg|jpeg)$/i }),
+        new MaxFileSizeValidator({ maxSize: 100 * 1024 }),
+        new FileTypeValidator({ fileType: /^image\/(jpeg|png|jpg)$/i }),
       ],
     });
   }

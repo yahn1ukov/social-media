@@ -1,45 +1,39 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
-import { PrismaService } from '@/prisma/prisma.service';
 import { MinioService } from '@/minio/minio.service';
+import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class FilesService {
   constructor(
-    private readonly prismaService: PrismaService,
     private readonly minioService: MinioService,
+    private readonly prismaService: PrismaService,
   ) {}
 
-  async uploadAvatarByUserId(userId: string, file: Express.Multer.File) {
+  async uploadUserAvatar(userId: string, avatarFile: Express.Multer.File) {
+    const filePath = `users/${userId}/avatars/${Date.now()}-${avatarFile.originalname}`;
+
     try {
-      const oldFile = await this.prismaService.file.findUnique({
+      const avatar = await this.prismaService.file.findUnique({
         where: { userId },
-        select: {
-          id: true,
-          url: true,
-        },
+        select: { id: true, url: true },
       });
 
-      const filename = `users/${userId}/avatars/${Date.now()}-${file.originalname}`;
-
-      await this.minioService.upload(filename, file);
-
+      await this.minioService.uploadFile(filePath, avatarFile);
       await this.prismaService.file.create({
         data: {
-          name: file.originalname,
-          size: file.size,
-          contentType: file.mimetype,
-          url: filename,
-          user: {
-            connect: { id: userId },
-          },
+          name: avatarFile.originalname,
+          size: avatarFile.size,
+          contentType: avatarFile.mimetype,
+          url: filePath,
+          user: { connect: { id: userId } },
         },
       });
 
-      if (oldFile) {
-        await this.minioService.remove(oldFile.url);
+      if (avatar) {
+        await this.minioService.deleteFile(avatar.url);
         await this.prismaService.file.delete({
-          where: { id: oldFile.id },
+          where: { id: avatar.id },
         });
       }
     } catch (error) {
@@ -47,36 +41,35 @@ export class FilesService {
     }
   }
 
-  async uploadMediaByPostIdAndUserId(
+  async uploadPostMedia(
     postId: string,
     userId: string,
-    file: Express.Multer.File,
+    mediaFiles: Express.Multer.File[],
   ) {
     try {
-      const filename = `users/${userId}/posts/${postId}/media/${Date.now()}-${file.originalname}`;
+      await Promise.all(
+        mediaFiles.map(async (file) => {
+          const filePath = `users/${userId}/posts/${postId}/media/${Date.now()}-${file.originalname}`;
 
-      await this.minioService.upload(filename, file);
-
-      await this.prismaService.file.create({
-        data: {
-          name: file.originalname,
-          size: file.size,
-          contentType: file.mimetype,
-          url: filename,
-          post: {
-            connect: { id: postId },
-          },
-        },
-      });
+          await this.minioService.uploadFile(filePath, file);
+          await this.prismaService.file.create({
+            data: {
+              name: file.originalname,
+              size: file.size,
+              contentType: file.mimetype,
+              url: filePath,
+              post: { connect: { id: postId } },
+            },
+          });
+        }),
+      );
     } catch (error) {
-      throw new InternalServerErrorException('Failed to upload media');
+      throw new InternalServerErrorException('Failed to upload media files');
     }
   }
 
-  async deleteMediaByIds(postId: string, fileIds: string[]) {
-    if (!fileIds.length) {
-      return;
-    }
+  async deleteMediaFiles(postId: string, fileIds: string[]) {
+    if (!fileIds.length) return;
 
     try {
       const files = await this.prismaService.file.findMany({
@@ -84,35 +77,29 @@ export class FilesService {
           id: { in: fileIds },
           postId: postId,
         },
-        select: {
-          id: true,
-          url: true,
-        },
+        select: { url: true },
       });
 
-      if (files.length) {
-        await Promise.all(
-          files.map((file) => this.minioService.remove(file.url)),
-        );
+      if (!files.length) return;
 
-        await this.prismaService.file.deleteMany({
-          where: {
-            id: {
-              in: files.map((f) => f.id),
-            },
-          },
-        });
-      }
+      const urls = files.map((file) => file.url);
+
+      await this.deleteFiles(urls);
+      await this.prismaService.file.deleteMany({
+        where: { id: { in: fileIds } },
+      });
     } catch (error) {
       throw new InternalServerErrorException('Failed to delete media files');
     }
   }
 
-  async deleteMediaByUrl(filename: string) {
+  async deleteFiles(urls: string[]) {
+    if (!urls.length) return;
+
     try {
-      await this.minioService.remove(filename);
+      await this.minioService.deleteFiles(urls);
     } catch (error) {
-      throw new InternalServerErrorException('Failed to delete media files');
+      throw new InternalServerErrorException('Failed to delete files');
     }
   }
 }

@@ -11,50 +11,54 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-import { JwtAuth } from '@/auth/decorators/jwt.decorator';
-import { UsersService } from './users.service';
-import { Public } from '@/auth/decorators/public.decorator';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
+import { JwtAuth } from '@/auth/decorators/jwt.decorator';
+import { Public } from '@/auth/decorators/public.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ParseAvatarPipe } from './pipes/parse-avatar.pipe';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
+import { ParseAvatarPipe } from './pipes/parse-avatar.pipe';
+import { UsersService } from './users.service';
 
-@JwtAuth()
 @Controller('users')
+@JwtAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
-  async getById(@CurrentUser('id') id: string) {
-    return await this.usersService.getById(id);
+  async getCurrentUser(@CurrentUser('sub') userId: string) {
+    return await this.usersService.getUserProfile(userId);
   }
 
   @Public()
-  @Get(':id')
-  async getByUserId(@Param('id', ParseUUIDPipe) id: string) {
-    return await this.usersService.getById(id);
+  @Get(':userId')
+  async getUserById(@Param('userId', ParseUUIDPipe) userId: string) {
+    return await this.usersService.getUserProfile(userId);
   }
 
   @Patch('me/password')
-  async updatePasswordById(
-    @CurrentUser('id') id: string,
-    @Body() dto: UpdateUserPasswordDto,
+  async updateCurrentUserPassword(
+    @CurrentUser('sub') userId: string,
+    @Body() passwordDto: UpdateUserPasswordDto,
   ) {
-    return await this.usersService.updatePasswordById(id, dto);
+    return await this.usersService.updateUserPassword(userId, passwordDto);
   }
 
   @Patch('me')
-  @UseInterceptors(FileInterceptor('avatar'))
-  async updateById(
-    @CurrentUser('id') id: string,
-    @Body() dto: UpdateUserDto,
-    @UploadedFile(ParseAvatarPipe) avatar?: Express.Multer.File,
+  @UseInterceptors(FileInterceptor('avatarFile'))
+  async updateCurrentUserProfile(
+    @CurrentUser('sub') userId: string,
+    @Body() updateDto: UpdateUserDto,
+    @UploadedFile(ParseAvatarPipe) avatarFile?: Express.Multer.File,
   ) {
-    return await this.usersService.updateById(id, dto, avatar);
+    return await this.usersService.updateUserProfile(
+      userId,
+      updateDto,
+      avatarFile,
+    );
   }
 
   @Delete('me')
-  async deleteById(@CurrentUser('id') id: string) {
-    return await this.usersService.deleteById(id);
+  async deleteCurrentUser(@CurrentUser('sub') userId: string) {
+    return await this.usersService.deleteUser(userId);
   }
 }

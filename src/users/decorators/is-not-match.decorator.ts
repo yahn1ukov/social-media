@@ -6,28 +6,12 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 
-export function IsNotMatch(
-  property: string,
-  validationOptions?: ValidationOptions,
-) {
-  return (target: object, propertyName: string) => {
-    registerDecorator({
-      name: 'IsNotMatch',
-      target: target.constructor,
-      propertyName,
-      constraints: [property],
-      options: validationOptions,
-      validator: IsNotMatchConstraint,
-    });
-  };
-}
-
-@ValidatorConstraint({ name: 'IsNotMatch' })
+@ValidatorConstraint({ name: 'isNotMatch', async: false })
 export class IsNotMatchConstraint implements ValidatorConstraintInterface {
   validate(value: unknown, args: ValidationArguments): boolean {
-    const [relatedPropertyName] = args.constraints as [string];
+    const [relatedProperty] = args.constraints as [string];
     const relatedValue = (args.object as Record<string, unknown>)[
-      relatedPropertyName
+      relatedProperty
     ];
 
     return (
@@ -37,8 +21,23 @@ export class IsNotMatchConstraint implements ValidatorConstraintInterface {
     );
   }
 
-  defaultMessage(args: ValidationArguments) {
-    const [relatedPropertyName] = args.constraints as [string];
-    return `${args.property} should not match ${relatedPropertyName}`;
+  defaultMessage(args: ValidationArguments): string {
+    const [relatedProperty] = args.constraints as [string];
+    return `${args.property} must not match ${relatedProperty}`;
   }
+}
+
+export function IsNotMatch(
+  property: string,
+  validationOptions?: ValidationOptions,
+) {
+  return (object: object, propertyName: string): void => {
+    registerDecorator({
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      constraints: [property],
+      validator: IsNotMatchConstraint,
+    });
+  };
 }

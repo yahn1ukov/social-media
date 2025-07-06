@@ -23,6 +23,9 @@ CREATE TABLE "files" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "files_url_key" ON "files"("url");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "files_user_id_key" ON "files"("user_id");
 
 -- CreateIndex

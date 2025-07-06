@@ -12,16 +12,16 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(username: string, password: string) {
-    const user = await this.usersService.findByUsername(username);
+    const user = await this.usersService.findUserByUsername(username);
     if (!user) {
       throw new UnauthorizedException('Username or password is incorrect');
     }
 
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatch) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       throw new UnauthorizedException('Username or password is incorrect');
     }
 
-    return { id: user.id };
+    return { sub: user.id };
   }
 }

@@ -17,7 +17,7 @@ import { JwtAuthGuard } from './guards/jwt.guard';
     PassportModule,
     JwtModule.registerAsync({
       useFactory: (configService: AppConfigService) => ({
-        secret: configService.secretKey,
+        secret: configService.jwtSecretKey,
       }),
       inject: [AppConfigService],
     }),

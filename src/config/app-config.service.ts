@@ -14,15 +14,15 @@ export class AppConfigService {
     return this.configService.get<number>('PORT', 3000);
   }
 
-  get secretKey() {
+  get jwtSecretKey() {
     return this.configService.get<string>('JWT_SECRET_KEY', '');
   }
 
-  get accessExpiresIn() {
+  get jwtAccessExpiresIn() {
     return this.configService.get<number>('JWT_ACCESS_EXPIRES_IN', 0);
   }
 
-  get refreshExpiresIn() {
+  get jwtRefreshExpiresIn() {
     return this.configService.get<number>('JWT_REFRESH_EXPIRES_IN', 0);
   }
 

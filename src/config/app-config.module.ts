@@ -3,24 +3,15 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AppConfigService } from './app-config.service';
 
-interface AppConfigProps {
-  isGlobal?: boolean;
-  cache?: boolean;
-}
-
 @Module({})
 export class AppConfigModule {
-  static forRoot(props?: AppConfigProps): DynamicModule {
+  static forRoot(): DynamicModule {
     return {
       module: AppConfigModule,
-      imports: [
-        ConfigModule.forRoot({
-          cache: props?.cache ?? false,
-        }),
-      ],
+      imports: [ConfigModule.forRoot({ cache: true })],
       providers: [AppConfigService],
       exports: [AppConfigService],
-      global: props?.isGlobal ?? false,
+      global: true,
     };
   }
 }

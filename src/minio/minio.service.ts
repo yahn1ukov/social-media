@@ -17,42 +17,52 @@ export class MinioService implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      const isBucketExists = await this.minioClient.bucketExists(
-        this.configService.s3Bucket,
-      );
-      if (!isBucketExists) {
-        await this.minioClient.makeBucket(
-          this.configService.s3Bucket,
-          this.configService.s3Region,
-        );
+      const bucketName = this.configService.s3Bucket;
+      const region = this.configService.s3Region;
+
+      const bucketExists = await this.minioClient.bucketExists(bucketName);
+      if (!bucketExists) {
+        await this.minioClient.makeBucket(bucketName, region);
       }
     } catch (error) {
-      throw new InternalServerErrorException('Failed to make MinIO bucket');
+      throw new InternalServerErrorException(
+        'Failed to initialize MinIO bucket',
+      );
     }
   }
 
-  async upload(filename: string, file: Express.Multer.File) {
+  async uploadFile(objectName: string, file: Express.Multer.File) {
     try {
       await this.minioClient.putObject(
         this.configService.s3Bucket,
-        filename,
+        objectName,
         file.buffer,
         file.size,
         { 'Content-Type': file.mimetype },
       );
     } catch (error) {
-      throw new InternalServerErrorException('Failed to upload file');
+      throw new InternalServerErrorException(`Failed to upload file`);
     }
   }
 
-  async remove(filename: string) {
+  async deleteFile(objectName: string) {
     try {
       await this.minioClient.removeObject(
         this.configService.s3Bucket,
-        filename,
+        objectName,
       );
     } catch (error) {
-      throw new InternalServerErrorException('Failed to delete file');
+      throw new InternalServerErrorException(`Failed to delete file`);
+    }
+  }
+
+  async deleteFiles(objectNames: string[]) {
+    try {
+      await Promise.all(
+        objectNames.map((objectName) => this.deleteFile(objectName)),
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to delete files`);
     }
   }
 }

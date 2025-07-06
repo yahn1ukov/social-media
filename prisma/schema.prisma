@@ -42,7 +42,7 @@ model File {
   name        String
   size        Int
   contentType String   @map("content_type")
-  url         String   @db.Text
+  url         String   @unique @db.Text
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String?  @unique @map("user_id")
   post        Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)

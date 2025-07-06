@@ -21,10 +21,10 @@ export class AuthController {
 
   @Post('register')
   async register(
+    @Body() registerDto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
-    @Body() dto: RegisterDto,
   ) {
-    return await this.authService.register(res, dto);
+    return await this.authService.register(registerDto, res);
   }
 
   @LocalAuth()
@@ -48,9 +48,9 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
+    @CurrentUser('sub') userId: string,
     @Res({ passthrough: true }) res: Response,
-    @CurrentUser('id') id: string,
   ) {
-    return await this.authService.logout(res, id);
+    return await this.authService.logout(userId, res);
   }
 }

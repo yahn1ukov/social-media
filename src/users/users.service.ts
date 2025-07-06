@@ -8,41 +8,35 @@ import {
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-import { PrismaService } from '@/prisma/prisma.service';
 import { FilesService } from '@/files/files.service';
+import { PrismaService } from '@/prisma/prisma.service';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly prismaService: PrismaService,
     private readonly filesService: FilesService,
+    private readonly prismaService: PrismaService,
   ) {}
 
-  async findById(id: string) {
+  async findUserById(userId: string) {
     return await this.prismaService.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        refreshToken: true,
-      },
+      where: { id: userId },
+      select: { id: true, refreshToken: true },
     });
   }
 
-  async findByUsername(username: string) {
+  async findUserByUsername(username: string) {
     return await this.prismaService.user.findUnique({
       where: { username },
-      select: {
-        id: true,
-        password: true,
-      },
+      select: { id: true, password: true },
     });
   }
 
-  async create(data: Prisma.UserCreateInput) {
+  async createUser(userData: Prisma.UserCreateInput) {
     try {
       return await this.prismaService.user.create({
-        data,
+        data: userData,
         select: { id: true },
       });
     } catch (error) {
@@ -50,15 +44,13 @@ export class UsersService {
     }
   }
 
-  async getById(id: string) {
+  async getUserProfile(userId: string) {
     try {
       return await this.prismaService.user.findUniqueOrThrow({
-        where: { id },
+        where: { id: userId },
         select: {
           id: true,
-          avatar: {
-            select: { url: true },
-          },
+          avatar: { select: { url: true } },
           displayName: true,
           username: true,
           bio: true,
@@ -69,47 +61,47 @@ export class UsersService {
     }
   }
 
-  async updateById(
-    id: string,
-    data: Prisma.UserUpdateInput,
-    avatar?: Express.Multer.File,
+  async updateUserProfile(
+    userId: string,
+    updateData: Prisma.UserUpdateInput,
+    avatarFile?: Express.Multer.File,
   ) {
     try {
       await this.prismaService.user.update({
-        where: { id },
-        data,
+        where: { id: userId },
+        data: updateData,
       });
 
-      if (avatar) {
-        await this.filesService.uploadAvatarByUserId(id, avatar);
+      if (avatarFile) {
+        await this.filesService.uploadUserAvatar(userId, avatarFile);
       }
     } catch (error) {
       this.handleError(error);
     }
   }
 
-  async updatePasswordById(id: string, dto: UpdateUserPasswordDto) {
-    const user = await this.prismaService.user.findUnique({
-      where: { id },
-      select: { password: true },
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const isPasswordMatch = await bcrypt.compare(
-      dto.oldPassword,
-      user.password,
-    );
-    if (!isPasswordMatch) {
-      throw new BadRequestException('Incorrect password');
-    }
-
-    const hashedPassword = await bcrypt.hash(dto.newPassword, 8);
-
+  async updateUserPassword(userId: string, passwordDto: UpdateUserPasswordDto) {
     try {
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+        select: { password: true },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const isPasswordValid = await bcrypt.compare(
+        passwordDto.oldPassword,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        throw new BadRequestException('Incorrect password');
+      }
+
+      const hashedPassword = await bcrypt.hash(passwordDto.newPassword, 10);
+
       await this.prismaService.user.update({
-        where: { id },
+        where: { id: userId },
         data: { password: hashedPassword },
       });
     } catch (error) {
@@ -117,10 +109,10 @@ export class UsersService {
     }
   }
 
-  async updateRefreshTokenById(id: string, refreshToken: string | null) {
+  async updateRefreshToken(userId: string, refreshToken: string | null) {
     try {
       await this.prismaService.user.update({
-        where: { id },
+        where: { id: userId },
         data: { refreshToken },
       });
     } catch (error) {
@@ -128,26 +120,19 @@ export class UsersService {
     }
   }
 
-  async deleteById(id: string) {
+  async deleteUser(userId: string) {
     try {
-      const files = await this.prismaService.file.findMany({
-        where: {
-          OR: [{ userId: id }, { post: { authorId: id } }],
-        },
+      const userFiles = await this.prismaService.file.findMany({
+        where: { OR: [{ userId: userId }, { post: { authorId: userId } }] },
         select: { url: true },
       });
 
-      if (files.length) {
-        await Promise.all(
-          files.map((file) => {
-            return this.filesService.deleteMediaByUrl(file.url);
-          }),
-        );
+      if (userFiles.length) {
+        const fileUrls = userFiles.map((file) => file.url);
+        await this.filesService.deleteFiles(fileUrls);
       }
 
-      await this.prismaService.user.delete({
-        where: { id },
-      });
+      await this.prismaService.user.delete({ where: { id: userId } });
     } catch (error) {
       this.handleError(error);
     }
@@ -165,18 +150,10 @@ export class UsersService {
       }
     }
 
-    if (error instanceof Prisma.PrismaClientValidationError) {
-      throw new BadRequestException('Invalid data provided');
-    }
-
-    if (
-      error instanceof BadRequestException ||
-      error instanceof ConflictException ||
-      error instanceof NotFoundException
-    ) {
+    if (error instanceof NotFoundException || BadRequestException) {
       throw error;
     }
 
-    throw new InternalServerErrorException('Failed to process User');
+    throw new InternalServerErrorException('Operation failed');
   }
 }

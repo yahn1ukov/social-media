@@ -9,16 +9,15 @@ import { MinioService } from './minio.service';
   providers: [
     {
       provide: MINIO_TOKEN,
-      useFactory: (configService: AppConfigService) => {
-        return new Minio.Client({
+      useFactory: (configService: AppConfigService) =>
+        new Minio.Client({
           accessKey: configService.s3AccessKey,
           secretKey: configService.s3SecretKey,
           endPoint: configService.s3Endpoint,
           port: configService.s3Port,
           region: configService.s3Region,
           useSSL: configService.s3UseSSL,
-        });
-      },
+        }),
       inject: [AppConfigService],
     },
     MinioService,

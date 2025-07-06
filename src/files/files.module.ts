@@ -1,11 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 
-import { PrismaModule } from '@/prisma/prisma.module';
 import { MinioModule } from '@/minio/minio.module';
 import { FilesService } from './files.service';
 
+@Global()
 @Module({
-  imports: [PrismaModule, MinioModule],
+  imports: [MinioModule],
   providers: [FilesService],
   exports: [FilesService],
 })

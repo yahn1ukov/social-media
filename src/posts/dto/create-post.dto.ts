@@ -6,6 +6,7 @@ export class CreatePostDto {
   text: string;
 
   @IsArray()
+  @IsString({ each: true })
   @IsOptional()
   hashtags?: string[];
 }

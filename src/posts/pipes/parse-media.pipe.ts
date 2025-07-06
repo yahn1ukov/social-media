@@ -11,8 +11,10 @@ export class ParseMediaPipe extends ParseFilePipe {
     super({
       fileIsRequired: false,
       validators: [
-        new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 25 }),
-        new FileTypeValidator({ fileType: /(png|jpg|jpeg|mp4|mov)$/i }),
+        new MaxFileSizeValidator({ maxSize: 25 * 1024 * 1024 }),
+        new FileTypeValidator({
+          fileType: /^(image\/(jpeg|png|jpg)|video\/(mp4|mov|quicktime))$/i,
+        }),
       ],
     });
   }

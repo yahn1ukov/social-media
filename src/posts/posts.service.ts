@@ -1,81 +1,67 @@
 import {
-  BadRequestException,
-  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { PrismaService } from '@/prisma/prisma.service';
 import { FilesService } from '@/files/files.service';
+import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class PostsService {
+  private readonly postSelectOptions = {
+    id: true,
+    text: true,
+    hashtags: true,
+    author: {
+      select: {
+        avatar: { select: { url: true } },
+        username: true,
+      },
+    },
+    files: {
+      select: {
+        id: true,
+        contentType: true,
+        url: true,
+      },
+    },
+    createdAt: true,
+  };
+
   constructor(
-    private readonly prismaService: PrismaService,
     private readonly filesService: FilesService,
+    private readonly prismaService: PrismaService,
   ) {}
 
-  async create(
+  async createPost(
     userId: string,
-    data: Omit<Prisma.PostCreateInput, 'author'>,
-    media?: Array<Express.Multer.File>,
+    postData: Omit<Prisma.PostCreateInput, 'author'>,
+    mediaFiles?: Express.Multer.File[],
   ) {
     try {
       const post = await this.prismaService.post.create({
         data: {
-          ...data,
-          author: {
-            connect: { id: userId },
-          },
+          ...postData,
+          author: { connect: { id: userId } },
         },
         select: { id: true },
       });
 
-      if (media?.length) {
-        await Promise.all(
-          media.map((file) =>
-            this.filesService.uploadMediaByPostIdAndUserId(
-              post.id,
-              userId,
-              file,
-            ),
-          ),
-        );
+      if (mediaFiles?.length) {
+        await this.filesService.uploadPostMedia(post.id, userId, mediaFiles);
       }
     } catch (error) {
       this.handleError(error);
     }
   }
 
-  async getAll(userId?: string) {
-    const where: Prisma.PostWhereInput = userId ? { authorId: userId } : {};
-
+  async getAllPosts(authorId?: string) {
     try {
       return await this.prismaService.post.findMany({
-        where,
-        select: {
-          id: true,
-          text: true,
-          hashtags: true,
-          author: {
-            select: {
-              avatar: {
-                select: { url: true },
-              },
-              username: true,
-            },
-          },
-          files: {
-            select: {
-              id: true,
-              contentType: true,
-              url: true,
-            },
-          },
-          createdAt: true,
-        },
+        where: authorId ? { authorId } : {},
+        select: this.postSelectOptions,
         orderBy: { createdAt: 'desc' },
       });
     } catch (error) {
@@ -83,89 +69,56 @@ export class PostsService {
     }
   }
 
-  async getById(id: string) {
+  async getPostById(postId: string) {
     try {
       return await this.prismaService.post.findUniqueOrThrow({
-        where: { id },
-        select: {
-          id: true,
-          text: true,
-          hashtags: true,
-          author: {
-            select: {
-              avatar: {
-                select: { url: true },
-              },
-              username: true,
-            },
-          },
-          files: {
-            select: {
-              id: true,
-              contentType: true,
-              url: true,
-            },
-          },
-          createdAt: true,
-        },
+        where: { id: postId },
+        select: this.postSelectOptions,
       });
     } catch (error) {
       this.handleError(error);
     }
   }
 
-  async updateById(
-    id: string,
-    userId: string,
-    data: Prisma.PostUpdateInput,
-    media?: Array<Express.Multer.File>,
+  async updatePost(
+    postId: string,
+    authorId: string,
+    updateData: Prisma.PostUpdateInput,
+    newMedia?: Express.Multer.File[],
     deletedMediaIds?: string[],
   ) {
     try {
       await this.prismaService.post.update({
-        where: {
-          id,
-          authorId: userId,
-        },
-        data,
+        where: { id: postId, authorId },
+        data: updateData,
       });
 
       if (deletedMediaIds?.length) {
-        await this.filesService.deleteMediaByIds(id, deletedMediaIds);
+        await this.filesService.deleteMediaFiles(postId, deletedMediaIds);
       }
 
-      if (media?.length) {
-        await Promise.all(
-          media.map((file) =>
-            this.filesService.uploadMediaByPostIdAndUserId(id, userId, file),
-          ),
-        );
+      if (newMedia?.length) {
+        await this.filesService.uploadPostMedia(postId, authorId, newMedia);
       }
     } catch (error) {
       this.handleError(error);
     }
   }
 
-  async deleteById(id: string, userId: string) {
+  async deletePost(postId: string, authorId: string) {
     try {
-      const files = await this.prismaService.file.findMany({
-        where: { postId: id },
+      const postFiles = await this.prismaService.file.findMany({
+        where: { postId },
         select: { url: true },
       });
 
-      if (files.length) {
-        await Promise.all(
-          files.map((file) => {
-            return this.filesService.deleteMediaByUrl(file.url);
-          }),
-        );
+      if (postFiles.length) {
+        const fileUrls = postFiles.map((file) => file.url);
+        await this.filesService.deleteFiles(fileUrls);
       }
 
       await this.prismaService.post.delete({
-        where: {
-          id,
-          authorId: userId,
-        },
+        where: { id: postId, authorId },
       });
     } catch (error) {
       this.handleError(error);
@@ -182,18 +135,6 @@ export class PostsService {
       }
     }
 
-    if (error instanceof Prisma.PrismaClientValidationError) {
-      throw new BadRequestException('Invalid data provided');
-    }
-
-    if (
-      error instanceof BadRequestException ||
-      error instanceof ConflictException ||
-      error instanceof NotFoundException
-    ) {
-      throw error;
-    }
-
-    throw new InternalServerErrorException('Failed to process Post');
+    throw new InternalServerErrorException('Operation failed');
   }
 }

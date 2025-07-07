@@ -1,12 +1,10 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
-import { MinioModule } from '@/minio/minio.module';
+import { FilesRepository } from './files.repository';
 import { FilesService } from './files.service';
 
-@Global()
 @Module({
-  imports: [MinioModule],
-  providers: [FilesService],
+  providers: [FilesRepository, FilesService],
   exports: [FilesService],
 })
 export class FilesModule {}

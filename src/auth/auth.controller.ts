@@ -21,36 +21,36 @@ export class AuthController {
 
   @Post('register')
   async register(
-    @Body() registerDto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
+    @Body() dto: RegisterDto,
   ) {
-    return await this.authService.register(registerDto, res);
+    return this.authService.register(res, dto);
   }
 
-  @LocalAuth()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @LocalAuth()
   async login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return await this.authService.login(req, res);
+    return this.authService.login(req, res);
   }
 
-  @JwtAuth()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @JwtAuth()
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return await this.authService.refresh(req, res);
+    return this.authService.refresh(req, res);
   }
 
-  @JwtAuth()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
+  @JwtAuth()
   async logout(
-    @CurrentUser('sub') userId: string,
     @Res({ passthrough: true }) res: Response,
+    @CurrentUser('id') userId: string,
   ) {
-    return await this.authService.logout(userId, res);
+    return this.authService.logout(res, userId);
   }
 }

@@ -12,13 +12,13 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 
-import { CurrentUser } from '@/auth/decorators/current-user.decorator';
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
-import { Public } from '@/auth/decorators/public.decorator';
+import { PostsService } from './posts.service';
+import { CurrentUser } from '@/auth/decorators/current-user.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
+import { Public } from '@/auth/decorators/public.decorator';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { ParseMediaPipe } from './pipes/parse-media.pipe';
-import { PostsService } from './posts.service';
 
 @Controller('posts')
 @JwtAuth()
@@ -28,58 +28,46 @@ export class PostsController {
   @Post()
   @UseInterceptors(FilesInterceptor('media', 10))
   async createPost(
-    @CurrentUser('sub') authorId: string,
-    @Body() createPostDto: CreatePostDto,
-    @UploadedFiles(ParseMediaPipe) mediaFiles?: Express.Multer.File[],
+    @CurrentUser('id') authorId: string,
+    @Body() dto: CreatePostDto,
+    @UploadedFiles(ParseMediaPipe) media?: Express.Multer.File[],
   ) {
-    return await this.postsService.createPost(
-      authorId,
-      createPostDto,
-      mediaFiles,
-    );
+    return this.postsService.createPost(authorId, dto, media);
   }
 
-  @Public()
   @Get()
-  async getAllPosts() {
-    return await this.postsService.getAllPosts();
+  @Public()
+  async getPosts() {
+    return this.postsService.getPosts();
   }
 
   @Get('me')
-  async getCurrentUserPosts(@CurrentUser('sub') authorId: string) {
-    return await this.postsService.getAllPosts(authorId);
+  async getCurrentUserPosts(@CurrentUser('id') authorId: string) {
+    return this.postsService.getPosts(authorId);
   }
 
+  @Get(':id')
   @Public()
-  @Get(':postId')
-  async getPostById(@Param('postId', ParseUUIDPipe) postId: string) {
-    return await this.postsService.getPostById(postId);
+  async getPostById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.postsService.getPost(id);
   }
 
-  @Patch(':postId')
+  @Patch(':id')
   @UseInterceptors(FilesInterceptor('media', 10))
   async updatePost(
-    @Param('postId', ParseUUIDPipe) postId: string,
-    @CurrentUser('sub') authorId: string,
-    @Body() updatePostDto: UpdatePostDto,
-    @UploadedFiles(ParseMediaPipe) mediaFiles?: Express.Multer.File[],
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') authorId: string,
+    @Body() dto: UpdatePostDto,
+    @UploadedFiles(ParseMediaPipe) media?: Express.Multer.File[],
   ) {
-    const { deletedMediaIds, ...updateData } = updatePostDto;
-
-    return await this.postsService.updatePost(
-      postId,
-      authorId,
-      updateData,
-      mediaFiles,
-      deletedMediaIds,
-    );
+    return this.postsService.updatePost(id, authorId, dto, media);
   }
 
-  @Delete(':postId')
+  @Delete(':id')
   async deletePost(
-    @Param('postId', ParseUUIDPipe) postId: string,
-    @CurrentUser('sub') authorId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') authorId: string,
   ) {
-    return await this.postsService.deletePost(postId, authorId);
+    return this.postsService.deletePost(id, authorId);
   }
 }

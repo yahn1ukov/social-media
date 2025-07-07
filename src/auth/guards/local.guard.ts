@@ -22,7 +22,7 @@ export class LocalAuthGuard extends AuthGuard('local') {
       whitelist: true,
       forbidNonWhitelisted: true,
     });
-    if (errors.length > 0) {
+    if (errors.length) {
       const errorMessages = errors.flatMap((error) =>
         Object.values(error.constraints || {}),
       );

@@ -4,7 +4,7 @@ import * as cookieParser from 'cookie-parser';
 import * as compression from 'compression';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 
-import { AppConfigService } from './config/app-config.service';
+import { AppConfigService } from '@/shared/config/app-config.service';
 import useSwagger from './swagger';
 
 async function bootstrap() {

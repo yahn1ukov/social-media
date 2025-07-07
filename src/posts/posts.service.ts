@@ -1,140 +1,58 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
+import { PostsRepository } from './posts.repository';
 import { FilesService } from '@/files/files.service';
-import { PrismaService } from '@/prisma/prisma.service';
+import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @Injectable()
 export class PostsService {
-  private readonly postSelectOptions = {
-    id: true,
-    text: true,
-    hashtags: true,
-    author: {
-      select: {
-        avatar: { select: { url: true } },
-        username: true,
-      },
-    },
-    files: {
-      select: {
-        id: true,
-        contentType: true,
-        url: true,
-      },
-    },
-    createdAt: true,
-  };
-
   constructor(
+    private readonly postsRepository: PostsRepository,
     private readonly filesService: FilesService,
-    private readonly prismaService: PrismaService,
   ) {}
 
   async createPost(
-    userId: string,
-    postData: Omit<Prisma.PostCreateInput, 'author'>,
-    mediaFiles?: Express.Multer.File[],
+    authorId: string,
+    dto: CreatePostDto,
+    media?: Express.Multer.File[],
   ) {
-    try {
-      const post = await this.prismaService.post.create({
-        data: {
-          ...postData,
-          author: { connect: { id: userId } },
-        },
-        select: { id: true },
-      });
+    const post = await this.postsRepository.create(authorId, dto);
 
-      if (mediaFiles?.length) {
-        await this.filesService.uploadPostMedia(post.id, userId, mediaFiles);
-      }
-    } catch (error) {
-      this.handleError(error);
+    if (media?.length) {
+      await this.filesService.uploadPostMedia(post!.id, authorId, media);
     }
   }
 
-  async getAllPosts(authorId?: string) {
-    try {
-      return await this.prismaService.post.findMany({
-        where: authorId ? { authorId } : {},
-        select: this.postSelectOptions,
-        orderBy: { createdAt: 'desc' },
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+  async getPosts(authorId?: string) {
+    return this.postsRepository.getAll(authorId);
   }
 
-  async getPostById(postId: string) {
-    try {
-      return await this.prismaService.post.findUniqueOrThrow({
-        where: { id: postId },
-        select: this.postSelectOptions,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+  async getPost(id: string) {
+    return this.postsRepository.getById(id);
   }
 
   async updatePost(
-    postId: string,
+    id: string,
     authorId: string,
-    updateData: Prisma.PostUpdateInput,
-    newMedia?: Express.Multer.File[],
-    deletedMediaIds?: string[],
+    dto: UpdatePostDto,
+    media?: Express.Multer.File[],
   ) {
-    try {
-      await this.prismaService.post.update({
-        where: { id: postId, authorId },
-        data: updateData,
-      });
+    const { deletedMediaIds, ...data } = dto;
 
-      if (deletedMediaIds?.length) {
-        await this.filesService.deleteMediaFiles(postId, deletedMediaIds);
-      }
+    await this.postsRepository.updateByIdAndAuthorId(id, authorId, data);
 
-      if (newMedia?.length) {
-        await this.filesService.uploadPostMedia(postId, authorId, newMedia);
-      }
-    } catch (error) {
-      this.handleError(error);
+    if (deletedMediaIds?.length) {
+      await this.filesService.deletePostMediaByIds(deletedMediaIds, id);
+    }
+
+    if (media?.length) {
+      await this.filesService.uploadPostMedia(id, authorId, media);
     }
   }
 
-  async deletePost(postId: string, authorId: string) {
-    try {
-      const postFiles = await this.prismaService.file.findMany({
-        where: { postId },
-        select: { url: true },
-      });
-
-      if (postFiles.length) {
-        const fileUrls = postFiles.map((file) => file.url);
-        await this.filesService.deleteFiles(fileUrls);
-      }
-
-      await this.prismaService.post.delete({
-        where: { id: postId, authorId },
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  private handleError(error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      switch (error.code) {
-        case 'P2025':
-          throw new NotFoundException('Post not found');
-        default:
-          throw new InternalServerErrorException('Database error occurred');
-      }
-    }
-
-    throw new InternalServerErrorException('Operation failed');
+  async deletePost(id: string, authorId: string) {
+    await this.filesService.deletePostMedia(id);
+    await this.postsRepository.deleteByIdAndAuthorId(id, authorId);
   }
 }

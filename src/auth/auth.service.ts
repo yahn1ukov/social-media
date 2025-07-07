@@ -1,42 +1,35 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  UnauthorizedException,
-} from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as bcrypt from 'bcrypt';
 
-import { AppConfigService } from '@/config/app-config.service';
-import { UsersService } from '@/users/users.service';
+import { UsersRepository } from '@/users/users.repository';
 import { TokenService } from './services/token.service';
+import { AppConfigService } from '@/shared/config/app-config.service';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly configService: AppConfigService,
-    private readonly usersService: UsersService,
+    private readonly usersRepository: UsersRepository,
     private readonly tokenService: TokenService,
+    private readonly configService: AppConfigService,
   ) {}
 
-  async register(registerDto: RegisterDto, res: Response) {
-    try {
-      const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-      const user = await this.usersService.createUser({
-        username: registerDto.username,
-        password: hashedPassword,
-      });
+  async register(res: Response, dto: RegisterDto) {
+    const hashedPassword = await bcrypt.hash(dto.password, 8);
 
-      return this.authenticateUser(res, user!.id);
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to register user');
-    }
+    const user = await this.usersRepository.create({
+      username: dto.username,
+      password: hashedPassword,
+    });
+
+    return this.authenticate(res, user!.id, user!.username);
   }
 
   async login(req: Request, res: Response) {
     const user = req.user as JwtPayload;
-    return this.authenticateUser(res, user.sub);
+    return this.authenticate(res, user.id, user.username);
   }
 
   async refresh(req: Request, res: Response) {
@@ -45,60 +38,47 @@ export class AuthService {
       throw new UnauthorizedException('Unauthorized');
     }
 
-    try {
-      const payload =
-        await this.tokenService.verifyJwtRefreshToken(refreshToken);
+    const payload = await this.tokenService.verifyJwtRefreshToken(refreshToken);
 
-      const user = await this.usersService.findUserById(payload.sub);
-      if (!user?.refreshToken) {
-        throw new UnauthorizedException('Unauthorized');
-      }
-
-      const isRefreshTokenMatch = await bcrypt.compare(
-        refreshToken,
-        user.refreshToken,
-      );
-      if (!isRefreshTokenMatch) {
-        throw new UnauthorizedException('Unauthorized');
-      }
-
-      return this.authenticateUser(res, user.id);
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('Failed to refresh token');
+    const user = await this.usersRepository.findById(payload.id);
+    if (!user?.refreshToken) {
+      throw new UnauthorizedException('Unauthorized');
     }
+
+    const isRefreshTokenValid = await bcrypt.compare(
+      refreshToken,
+      user.refreshToken,
+    );
+    if (!isRefreshTokenValid) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    return this.authenticate(res, user.id, user.username);
   }
 
-  async logout(userId: string, res: Response) {
-    try {
-      await this.usersService.updateRefreshToken(userId, null);
-      this.clearRefreshTokenCookie(res);
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to logout');
-    }
+  async logout(res: Response, userId: string) {
+    await this.usersRepository.updateById(userId, {
+      refreshToken: null,
+    });
+    this.clearRefreshTokenCookie(res);
   }
 
-  private async authenticateUser(res: Response, userId: string) {
-    try {
-      const { accessToken, refreshToken } =
-        await this.tokenService.generateTokens(userId);
+  private async authenticate(res: Response, userId: string, username: string) {
+    const { accessToken, refreshToken } =
+      await this.tokenService.generateTokens(userId, username);
 
-      const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-      await this.usersService.updateRefreshToken(userId, hashedRefreshToken);
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 8);
+    await this.usersRepository.updateById(userId, {
+      refreshToken: hashedRefreshToken,
+    });
 
-      this.setRefreshTokenCookie(res, refreshToken);
+    this.setRefreshTokenCookie(res, refreshToken);
 
-      return { accessToken };
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to authenticate user');
-    }
+    return { accessToken };
   }
 
-  private setRefreshTokenCookie(res: Response, token: string) {
-    res.cookie('refreshToken', token, {
+  private setRefreshTokenCookie(res: Response, refreshToken: string) {
+    res.cookie('refreshToken', refreshToken, {
       maxAge: this.configService.jwtRefreshExpiresIn,
       httpOnly: true,
       domain: this.configService.cookieDomain,

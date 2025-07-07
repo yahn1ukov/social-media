@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { AppConfigService } from '@/config/app-config.service';
+import { AppConfigService } from '@/shared/config/app-config.service';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -11,8 +11,8 @@ export class TokenService {
     private readonly configService: AppConfigService,
   ) {}
 
-  async generateTokens(userId: string) {
-    const payload: JwtPayload = { sub: userId };
+  async generateTokens(userId: string, username: string) {
+    const payload: JwtPayload = { id: userId, username };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.generateJwtAccessToken(payload),
@@ -23,17 +23,17 @@ export class TokenService {
   }
 
   async verifyJwtRefreshToken(token: string): Promise<JwtPayload> {
-    return await this.jwtService.verifyAsync(token);
+    return this.jwtService.verifyAsync(token);
   }
 
   private async generateJwtAccessToken(payload: JwtPayload) {
-    return await this.jwtService.signAsync(payload, {
+    return this.jwtService.signAsync(payload, {
       expiresIn: this.configService.jwtAccessExpiresIn,
     });
   }
 
   private async generateJwtRefreshToken(payload: JwtPayload) {
-    return await this.jwtService.signAsync(payload, {
+    return this.jwtService.signAsync(payload, {
       expiresIn: this.configService.jwtRefreshExpiresIn,
     });
   }

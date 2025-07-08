@@ -9,13 +9,13 @@ import { JwtPayload } from '../interfaces/jwt-payload.interface';
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly usersRepository: UsersRepository) {
-    super();
+    super({ usernameField: 'login' });
   }
 
-  async validate(username: string, password: string) {
-    const user = await this.usersRepository.findByUsername(username);
+  async validate(login: string, password: string) {
+    const user = await this.usersRepository.findByUsernameOrEmail(login);
     if (!user) {
-      throw new UnauthorizedException('Incorrect username');
+      throw new UnauthorizedException('Incorrect username or email');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);

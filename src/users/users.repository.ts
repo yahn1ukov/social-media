@@ -26,6 +26,13 @@ export class UsersRepository {
     });
   }
 
+  async findByUsernameOrEmail(identifier: string) {
+    return this.prismaService.user.findFirst({
+      where: { OR: [{ username: identifier }, { email: identifier }] },
+      select: { id: true, username: true, password: true },
+    });
+  }
+
   async create(data: Prisma.UserCreateInput) {
     try {
       return await this.prismaService.user.create({
@@ -46,7 +53,9 @@ export class UsersRepository {
           avatar: { select: { url: true } },
           displayName: true,
           username: true,
+          email: true,
           bio: true,
+          phoneNumber: true,
         },
       });
     } catch (error) {
@@ -74,7 +83,7 @@ export class UsersRepository {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       switch (error.code) {
         case 'P2002':
-          throw new ConflictException('User already exists');
+          throw new ConflictException('Username or email already exists');
         case 'P2025':
           throw new NotFoundException('User not found');
         default:

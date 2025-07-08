@@ -60,7 +60,6 @@ export class FilesRepository {
   }
 
   private handleError(error: any) {
-    console.log(error);
     throw new InternalServerErrorException('Operation failed');
   }
 }

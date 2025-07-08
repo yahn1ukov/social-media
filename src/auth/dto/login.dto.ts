@@ -1,9 +1,12 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
+import { IsUsernameOrEmail } from '@/shared/decorators/is-username-or-email.decorator';
+
 export class LoginDto {
   @IsString()
   @IsNotEmpty()
-  username: string;
+  @IsUsernameOrEmail()
+  login: string;
 
   @IsString()
   @IsNotEmpty()

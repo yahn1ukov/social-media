@@ -30,7 +30,7 @@ export class LocalAuthGuard extends AuthGuard('local') {
     }
 
     req.body = {
-      username: dto.username,
+      login: dto.login,
       password: dto.password,
     };
 

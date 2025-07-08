@@ -12,7 +12,9 @@ model User {
   avatar       File?
   displayName  String?  @map("display_name")
   username     String   @unique
+  email        String   @unique
   bio          String?  @db.Text
+  phoneNumber  String?  @map("phone_number")
   password     String   @db.Text
   refreshToken String?  @map("refresh_token") @db.Text
   posts        Post[]

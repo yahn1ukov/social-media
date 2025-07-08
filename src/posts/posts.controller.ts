@@ -4,9 +4,11 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -19,6 +21,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { Public } from '@/auth/decorators/public.decorator';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { ParseMediaPipe } from './pipes/parse-media.pipe';
+import { ParseOptionalUUIDPipe } from '@/shared/pipes/parse-optional-uuid.pipe';
 
 @Controller('posts')
 @JwtAuth()
@@ -37,13 +40,30 @@ export class PostsController {
 
   @Get()
   @Public()
-  async getPosts() {
-    return this.postsService.getPosts();
+  async getPosts(
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('cursor', ParseOptionalUUIDPipe) cursor?: string,
+  ) {
+    return this.postsService.getPosts(limit, cursor);
   }
 
   @Get('me')
-  async getCurrentUserPosts(@CurrentUser('id') authorId: string) {
-    return this.postsService.getPosts(authorId);
+  async getCurrentUserPosts(
+    @CurrentUser('id') authorId: string,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('cursor', ParseOptionalUUIDPipe) cursor?: string,
+  ) {
+    return this.postsService.getPosts(limit, cursor, authorId);
+  }
+
+  @Get(':authorId')
+  @Public()
+  async getUserPosts(
+    @Param('authorId', ParseUUIDPipe) authorId: string,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('cursor', ParseOptionalUUIDPipe) cursor?: string,
+  ) {
+    return this.postsService.getPosts(limit, cursor, authorId);
   }
 
   @Get(':id')

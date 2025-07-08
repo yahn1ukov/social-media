@@ -24,8 +24,10 @@ export class PostsService {
     }
   }
 
-  async getPosts(authorId?: string) {
-    return this.postsRepository.getAll(authorId);
+  async getPosts(limit: number, cursor?: string, authorId?: string) {
+    limit = limit > 0 ? limit : 4;
+
+    return this.postsRepository.getAll(limit, cursor, authorId);
   }
 
   async getPost(id: string) {

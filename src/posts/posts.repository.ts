@@ -26,6 +26,7 @@ export class PostsRepository {
         url: true,
       },
     },
+    _count: { select: { likes: true } },
     createdAt: true,
   };
 
@@ -45,12 +46,17 @@ export class PostsRepository {
     }
   }
 
-  async getAll(authorId?: string) {
+  async getAll(limit: number, cursor?: string, authorId?: string) {
     try {
       return await this.prismaService.post.findMany({
         where: authorId ? { authorId } : {},
         select: this.selectOptions,
         orderBy: { createdAt: 'desc' },
+        take: limit,
+        ...(cursor && {
+          cursor: { id: cursor },
+          skip: 1,
+        }),
       });
     } catch (error) {
       this.handleError(error);

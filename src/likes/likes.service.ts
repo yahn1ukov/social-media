@@ -10,7 +10,15 @@ export class LikesService {
     return this.likesRepository.create(userId, postId);
   }
 
+  async likeComment(userId: string, commentId: string) {
+    return this.likesRepository.create(userId, commentId);
+  }
+
   async unlikePost(userId: string, postId: string) {
-    return this.likesRepository.delete(userId, postId);
+    return this.likesRepository.deleteByUserIdAndPostId(userId, postId);
+  }
+
+  async unlikeComment(userId: string, commentId: string) {
+    return this.likesRepository.deleteByUserIdAndCommentId(userId, commentId);
   }
 }

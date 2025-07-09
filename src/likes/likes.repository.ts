@@ -12,12 +12,13 @@ import { PrismaService } from '@/shared/prisma/prisma.service';
 export class LikesRepository {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async create(userId: string, postId: string) {
+  async create(userId: string, postId?: string, commentId?: string) {
     try {
       await this.prismaService.like.create({
         data: {
           user: { connect: { id: userId } },
-          post: { connect: { id: postId } },
+          ...(postId && { post: { connect: { id: postId } } }),
+          ...(commentId && { comment: { connect: { id: commentId } } }),
         },
       });
     } catch (error) {
@@ -25,10 +26,20 @@ export class LikesRepository {
     }
   }
 
-  async delete(userId: string, postId: string) {
+  async deleteByUserIdAndPostId(userId: string, postId: string) {
     try {
       await this.prismaService.like.delete({
         where: { userId_postId: { userId, postId } },
+      });
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
+  }
+
+  async deleteByUserIdAndCommentId(userId: string, commentId: string) {
+    try {
+      await this.prismaService.like.delete({
+        where: { userId_commentId: { userId, commentId } },
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -39,9 +50,11 @@ export class LikesRepository {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       switch (error.code) {
         case 'P2002':
-          throw new ConflictException('Post already liked or unliked');
+          throw new ConflictException(
+            'Post or Comment already liked or unliked',
+          );
         case 'P2025':
-          throw new NotFoundException('User or Post not found');
+          throw new NotFoundException('User or Post or Comment not found');
         default:
           throw new InternalServerErrorException('Database error occurred');
       }

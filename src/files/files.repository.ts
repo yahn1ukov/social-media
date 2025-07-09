@@ -39,7 +39,7 @@ export class FilesRepository {
     try {
       await this.prismaService.file.create({ data });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
@@ -47,7 +47,7 @@ export class FilesRepository {
     try {
       await this.prismaService.file.delete({ where: { id } });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
@@ -55,11 +55,11 @@ export class FilesRepository {
     try {
       await this.prismaService.file.deleteMany({ where: { id: { in: ids } } });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
-  private handleError(error: any) {
+  private handlePrismaError(error: any) {
     throw new InternalServerErrorException('Operation failed');
   }
 }

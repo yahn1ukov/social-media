@@ -8,49 +8,71 @@ generator client {
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   avatar       File?
-  displayName  String?  @map("display_name")
-  username     String   @unique
-  email        String   @unique
-  bio          String?  @db.Text
-  phoneNumber  String?  @map("phone_number")
-  password     String   @db.Text
-  refreshToken String?  @map("refresh_token") @db.Text
+  displayName  String?   @map("display_name")
+  username     String    @unique
+  email        String    @unique
+  bio          String?   @db.Text
+  phoneNumber  String?   @map("phone_number")
+  password     String    @db.Text
+  refreshToken String?   @map("refresh_token") @db.Text
   posts        Post[]
+  comments     Comment[]
   likes        Like[]
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("users")
 }
 
 model Post {
-  id        String   @id @default(uuid())
-  text      String   @db.Text
-  hashtags  String[] @default([])
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  String   @map("author_id")
+  id        String    @id @default(uuid())
+  text      String    @db.Text
+  hashtags  String[]  @default([])
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String    @map("author_id")
   files     File[]
+  comments  Comment[]
   likes     Like[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([createdAt])
   @@index([authorId, createdAt])
   @@map("posts")
 }
 
+model Comment {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String   @map("author_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String   @map("post_id")
+  likes     Like[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([postId, createdAt])
+  @@index([authorId, createdAt])
+  @@map("comments")
+}
+
 model Like {
-  id     String  @id @default(uuid())
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String  @map("user_id")
-  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId String? @map("post_id")
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String?  @map("post_id")
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String?  @map("comment_id")
 
   @@unique([userId, postId])
+  @@unique([userId, commentId])
   @@index([userId])
   @@index([postId])
+  @@index([commentId])
   @@map("likes")
 }
 

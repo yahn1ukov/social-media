@@ -26,7 +26,7 @@ export class PostsRepository {
         url: true,
       },
     },
-    _count: { select: { likes: true } },
+    _count: { select: { likes: true, comments: true } },
     createdAt: true,
   };
 
@@ -42,7 +42,7 @@ export class PostsRepository {
         select: { id: true },
       });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
@@ -59,7 +59,7 @@ export class PostsRepository {
         }),
       });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
@@ -70,7 +70,7 @@ export class PostsRepository {
         select: this.selectOptions,
       });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
@@ -82,7 +82,7 @@ export class PostsRepository {
     try {
       await this.prismaService.post.update({ where: { id, authorId }, data });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
@@ -90,11 +90,11 @@ export class PostsRepository {
     try {
       await this.prismaService.post.delete({ where: { id, authorId } });
     } catch (error) {
-      this.handleError(error);
+      this.handlePrismaError(error);
     }
   }
 
-  private handleError(error: any) {
+  private handlePrismaError(error: any) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       switch (error.code) {
         case 'P2025':

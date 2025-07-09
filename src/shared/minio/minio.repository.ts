@@ -27,7 +27,7 @@ export class MinioRepository implements OnModuleInit {
         );
       }
     } catch (error) {
-      this.handleError(error);
+      this.handleMinioError(error);
     }
   }
 
@@ -41,7 +41,7 @@ export class MinioRepository implements OnModuleInit {
         { 'Content-Type': file.mimetype },
       );
     } catch (error) {
-      this.handleError(error);
+      this.handleMinioError(error);
     }
   }
 
@@ -52,7 +52,7 @@ export class MinioRepository implements OnModuleInit {
         objectName,
       );
     } catch (error) {
-      this.handleError(error);
+      this.handleMinioError(error);
     }
   }
 
@@ -60,7 +60,7 @@ export class MinioRepository implements OnModuleInit {
     await Promise.all(objectNames.map((objectName) => this.delete(objectName)));
   }
 
-  private handleError(error: any) {
+  private handleMinioError(error: any) {
     throw new InternalServerErrorException('Operation failed');
   }
 }

@@ -1,18 +1,11 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuth } from './decorators/local.decorator';
 import { JwtAuth } from './decorators/jwt.decorator';
+import { JwtRefreshAuth } from './decorators/jwt-refresh.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
@@ -20,10 +13,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(
-    @Res({ passthrough: true }) res: Response,
-    @Body() dto: RegisterDto,
-  ) {
+  async register(@Res({ passthrough: true }) res: Response, @Body() dto: RegisterDto) {
     return this.authService.register(res, dto);
   }
 
@@ -36,21 +26,15 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @JwtAuth()
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  @JwtRefreshAuth()
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.authService.refresh(req, res);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @JwtAuth()
-  async logout(
-    @Res({ passthrough: true }) res: Response,
-    @CurrentUser('id') userId: string,
-  ) {
+  async logout(@Res({ passthrough: true }) res: Response, @CurrentUser('id') userId: string) {
     return this.authService.logout(res, userId);
   }
 }

@@ -33,12 +33,7 @@ export class SharedModule {
         MinioRepository,
         ParseOptionalUUIDPipe,
       ],
-      exports: [
-        AppConfigService,
-        PrismaService,
-        MinioRepository,
-        ParseOptionalUUIDPipe,
-      ],
+      exports: [AppConfigService, PrismaService, MinioRepository, ParseOptionalUUIDPipe],
       global: true,
     };
   }

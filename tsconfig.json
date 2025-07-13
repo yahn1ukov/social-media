@@ -11,9 +11,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@/*": [
-        "src/*",
-      ],
+      "@/*": ["src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
@@ -23,7 +21,5 @@
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true
   },
-  "exclude": [
-    "node_modules"
-  ],
+  "exclude": ["node_modules"]
 }

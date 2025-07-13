@@ -11,7 +11,7 @@ export class TokenService {
     private readonly configService: AppConfigService,
   ) {}
 
-  async generateTokens(userId: string, username: string) {
+  async generateJwtTokens(userId: string, username: string) {
     const payload: JwtPayload = { id: userId, username };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -27,14 +27,10 @@ export class TokenService {
   }
 
   private async generateJwtAccessToken(payload: JwtPayload) {
-    return this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.jwtAccessExpiresIn,
-    });
+    return this.jwtService.signAsync(payload, { expiresIn: this.configService.jwtAccessExpiresIn });
   }
 
   private async generateJwtRefreshToken(payload: JwtPayload) {
-    return this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.jwtRefreshExpiresIn,
-    });
+    return this.jwtService.signAsync(payload, { expiresIn: this.configService.jwtRefreshExpiresIn });
   }
 }

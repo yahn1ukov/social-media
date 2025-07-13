@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcrypt';
 
@@ -20,11 +20,7 @@ export class AuthService {
     const { confirmPassword, ...data } = dto;
 
     const hashedPassword = await bcrypt.hash(data.password, 8);
-
-    const user = await this.usersRepository.create({
-      ...data,
-      password: hashedPassword,
-    });
+    const user = await this.usersRepository.create({ ...data, password: hashedPassword });
 
     return this.authenticate(res, user!.id, user!.username);
   }
@@ -35,65 +31,47 @@ export class AuthService {
   }
 
   async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies['refreshToken'] as string;
-    if (!refreshToken) {
-      throw new UnauthorizedException('Unauthorized');
-    }
-
-    const payload = await this.tokenService.verifyJwtRefreshToken(refreshToken);
-
-    const user = await this.usersRepository.findById(payload.id);
-    if (!user?.refreshToken) {
-      throw new UnauthorizedException('Unauthorized');
-    }
-
-    const isRefreshTokenValid = await bcrypt.compare(
-      refreshToken,
-      user.refreshToken,
-    );
-    if (!isRefreshTokenValid) {
-      throw new UnauthorizedException('Unauthorized');
-    }
-
+    const user = req.user as JwtPayload;
     return this.authenticate(res, user.id, user.username);
   }
 
   async logout(res: Response, userId: string) {
-    await this.usersRepository.updateById(userId, {
-      refreshToken: null,
-    });
+    await this.usersRepository.updateById(userId, { refreshToken: null });
     this.clearRefreshTokenCookie(res);
   }
 
   private async authenticate(res: Response, userId: string, username: string) {
-    const { accessToken, refreshToken } =
-      await this.tokenService.generateTokens(userId, username);
+    const { accessToken, refreshToken } = await this.tokenService.generateJwtTokens(userId, username);
 
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 8);
-    await this.usersRepository.updateById(userId, {
-      refreshToken: hashedRefreshToken,
-    });
+    await this.usersRepository.updateById(userId, { refreshToken: hashedRefreshToken });
 
     this.setRefreshTokenCookie(res, refreshToken);
 
-    return { accessToken };
+    return {
+      tokenType: this.configService.jwtTokenType,
+      accessToken,
+      expiresIn: this.configService.jwtAccessExpiresIn,
+    };
   }
 
-  private setRefreshTokenCookie(res: Response, refreshToken: string) {
-    res.cookie('refreshToken', refreshToken, {
-      maxAge: this.configService.jwtRefreshExpiresIn,
+  private get cookieOptions() {
+    return {
       httpOnly: true,
       domain: this.configService.cookieDomain,
       secure: !this.configService.isDev,
       sameSite: !this.configService.isDev ? 'strict' : 'none',
+    } as const;
+  }
+
+  private setRefreshTokenCookie(res: Response, refreshToken: string) {
+    res.cookie('refreshToken', refreshToken, {
+      ...this.cookieOptions,
+      maxAge: this.configService.jwtRefreshExpiresIn * 1000,
     });
   }
 
   private clearRefreshTokenCookie(res: Response) {
-    res.clearCookie('refreshToken', {
-      domain: this.configService.cookieDomain,
-      secure: !this.configService.isDev,
-      sameSite: !this.configService.isDev ? 'strict' : 'none',
-    });
+    res.clearCookie('refreshToken', this.cookieOptions);
   }
 }

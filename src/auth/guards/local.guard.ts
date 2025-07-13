@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ExecutionContext,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, ExecutionContext, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { plainToInstance } from 'class-transformer';
@@ -18,21 +14,13 @@ export class LocalAuthGuard extends AuthGuard('local') {
 
     const dto = plainToInstance(LoginDto, req.body);
 
-    const errors = await validate(dto, {
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    });
+    const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
     if (errors.length) {
-      const errorMessages = errors.flatMap((error) =>
-        Object.values(error.constraints || {}),
-      );
+      const errorMessages = errors.flatMap((error) => Object.values(error.constraints || {}));
       throw new BadRequestException(errorMessages);
     }
 
-    req.body = {
-      login: dto.login,
-      password: dto.password,
-    };
+    req.body = { login: dto.login, password: dto.password };
 
     const result = super.canActivate(ctx);
 

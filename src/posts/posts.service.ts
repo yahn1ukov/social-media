@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PostsRepository } from './posts.repository';
 import { FilesService } from '@/files/files.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 
 @Injectable()
@@ -12,11 +13,7 @@ export class PostsService {
     private readonly filesService: FilesService,
   ) {}
 
-  async createPost(
-    authorId: string,
-    dto: CreatePostDto,
-    media?: Express.Multer.File[],
-  ) {
+  async createPost(authorId: string, dto: CreatePostDto, media?: Express.Multer.File[]) {
     const post = await this.postsRepository.create(authorId, dto);
 
     if (media?.length) {
@@ -24,22 +21,27 @@ export class PostsService {
     }
   }
 
-  async getPosts(limit: number, cursor?: string, authorId?: string) {
-    limit = limit > 0 ? limit : 4;
-
-    return this.postsRepository.getAll(limit, cursor, authorId);
-  }
-
   async getPost(id: string) {
     return this.postsRepository.getById(id);
   }
 
-  async updatePost(
-    id: string,
-    authorId: string,
-    dto: UpdatePostDto,
-    media?: Express.Multer.File[],
-  ) {
+  async getPosts(dto: CursorPaginationDto) {
+    return this.postsRepository.findAll(dto.limit, dto.cursor);
+  }
+
+  async getUserPosts(authorId: string, dto: CursorPaginationDto) {
+    return this.postsRepository.findAllByAuthorId(authorId, dto.limit, dto.cursor);
+  }
+
+  async getLikedPosts(authorId: string, dto: CursorPaginationDto) {
+    return this.postsRepository.findAllByLikesUserId(authorId, dto.limit, dto.cursor);
+  }
+
+  async getFeedPosts(authorId: string, dto: CursorPaginationDto) {
+    return this.postsRepository.findAllByAuthorFollowersFollowerId(authorId, dto.limit, dto.cursor);
+  }
+
+  async updatePost(id: string, authorId: string, dto: UpdatePostDto, media?: Express.Multer.File[]) {
     const { deletedMediaIds, ...data } = dto;
 
     await this.postsRepository.updateByIdAndAuthorId(id, authorId, data);

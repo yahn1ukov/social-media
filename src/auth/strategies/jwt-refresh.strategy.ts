@@ -5,7 +5,7 @@ import { Request } from 'express';
 import * as bcrypt from 'bcrypt';
 
 import { AppConfigService } from '@/shared/config/app-config.service';
-import { UsersRepository } from '@/users/users.repository';
+import { UsersService } from '@/users/users.service';
 import { TokenService } from '../services/token.service';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 
@@ -13,7 +13,7 @@ import { JwtPayload } from '../interfaces/jwt-payload.interface';
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   constructor(
     configService: AppConfigService,
-    private readonly usersRepository: UsersRepository,
+    private readonly usersService: UsersService,
     private readonly tokenService: TokenService,
   ) {
     super({
@@ -32,7 +32,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
 
     const payload = await this.tokenService.verifyJwtRefreshToken(refreshToken);
 
-    const user = await this.usersRepository.findById(payload.id);
+    const user = await this.usersService.findById(payload.id);
     if (!user?.refreshToken) {
       throw new UnauthorizedException('Unauthorized');
     }

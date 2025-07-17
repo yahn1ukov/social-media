@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -15,13 +14,13 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
-import { PostsService } from './posts.service';
+import { PostsService } from '../posts.service';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
-import { CreatePostDto } from './dto/create-post.dto';
+import { CreatePostDto } from '../dto/create-post.dto';
 import { Public } from '@/auth/decorators/public.decorator';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { ParseMediaPipe } from './pipes/parse-media.pipe';
-import { ParseOptionalUUIDPipe } from '@/shared/pipes/parse-optional-uuid.pipe';
+import { UpdatePostDto } from '../dto/update-post.dto';
+import { ParseMediaPipe } from '../pipes/parse-media.pipe';
+import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
 
 @Controller('posts')
 @JwtAuth()
@@ -40,35 +39,13 @@ export class PostsController {
 
   @Get()
   @Public()
-  async getPosts(
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('cursor', ParseOptionalUUIDPipe) cursor?: string,
-  ) {
-    return this.postsService.getPosts(limit, cursor);
-  }
-
-  @Get('me')
-  async getCurrentUserPosts(
-    @CurrentUser('id') authorId: string,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('cursor', ParseOptionalUUIDPipe) cursor?: string,
-  ) {
-    return this.postsService.getPosts(limit, cursor, authorId);
-  }
-
-  @Get(':authorId')
-  @Public()
-  async getUserPosts(
-    @Param('authorId', ParseUUIDPipe) authorId: string,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('cursor', ParseOptionalUUIDPipe) cursor?: string,
-  ) {
-    return this.postsService.getPosts(limit, cursor, authorId);
+  async getPosts(@Query() dto: CursorPaginationDto) {
+    return this.postsService.getPosts(dto);
   }
 
   @Get(':id')
   @Public()
-  async getPostById(@Param('id', ParseUUIDPipe) id: string) {
+  async getPost(@Param('id', ParseUUIDPipe) id: string) {
     return this.postsService.getPost(id);
   }
 
@@ -84,10 +61,7 @@ export class PostsController {
   }
 
   @Delete(':id')
-  async deletePost(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('id') authorId: string,
-  ) {
+  async deletePost(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') authorId: string) {
     return this.postsService.deletePost(id, authorId);
   }
 }

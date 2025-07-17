@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@/shared/prisma/prisma.service';
@@ -11,6 +6,34 @@ import { PrismaService } from '@/shared/prisma/prisma.service';
 @Injectable()
 export class UsersRepository {
   constructor(private readonly prismaService: PrismaService) {}
+
+  async create(data: Prisma.UserCreateInput) {
+    try {
+      return await this.prismaService.user.create({ data, select: { id: true, username: true } });
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
+  }
+
+  async getById(id: string) {
+    try {
+      return await this.prismaService.user.findUniqueOrThrow({
+        where: { id },
+        select: {
+          id: true,
+          avatar: { select: { url: true } },
+          displayName: true,
+          username: true,
+          email: true,
+          bio: true,
+          phoneNumber: true,
+          _count: { select: { posts: true, followers: true, following: true } },
+        },
+      });
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
+  }
 
   async findById(id: string) {
     return this.prismaService.user.findUnique({
@@ -31,36 +54,6 @@ export class UsersRepository {
       where: { OR: [{ username: identifier }, { email: identifier }] },
       select: { id: true, username: true, password: true },
     });
-  }
-
-  async create(data: Prisma.UserCreateInput) {
-    try {
-      return await this.prismaService.user.create({
-        data,
-        select: { id: true, username: true },
-      });
-    } catch (error) {
-      this.handlePrismaError(error);
-    }
-  }
-
-  async getById(id: string) {
-    try {
-      return await this.prismaService.user.findUniqueOrThrow({
-        where: { id },
-        select: {
-          id: true,
-          avatar: { select: { url: true } },
-          displayName: true,
-          username: true,
-          email: true,
-          bio: true,
-          phoneNumber: true,
-        },
-      });
-    } catch (error) {
-      this.handlePrismaError(error);
-    }
   }
 
   async updateById(id: string, data: Prisma.UserUpdateInput) {

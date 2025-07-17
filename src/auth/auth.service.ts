@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcrypt';
 
-import { UsersRepository } from '@/users/users.repository';
+import { UsersService } from '@/users/users.service';
 import { TokenService } from './services/token.service';
 import { AppConfigService } from '@/shared/config/app-config.service';
 import { RegisterDto } from './dto/register.dto';
@@ -11,7 +11,7 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersRepository: UsersRepository,
+    private readonly usersService: UsersService,
     private readonly tokenService: TokenService,
     private readonly configService: AppConfigService,
   ) {}
@@ -20,7 +20,7 @@ export class AuthService {
     const { confirmPassword, ...data } = dto;
 
     const hashedPassword = await bcrypt.hash(data.password, 8);
-    const user = await this.usersRepository.create({ ...data, password: hashedPassword });
+    const user = await this.usersService.createProfile({ ...data, password: hashedPassword });
 
     return this.authenticate(res, user!.id, user!.username);
   }
@@ -36,7 +36,7 @@ export class AuthService {
   }
 
   async logout(res: Response, userId: string) {
-    await this.usersRepository.updateById(userId, { refreshToken: null });
+    await this.usersService.updateRefreshToken(userId, { refreshToken: null });
     this.clearRefreshTokenCookie(res);
   }
 
@@ -44,7 +44,7 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.tokenService.generateJwtTokens(userId, username);
 
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 8);
-    await this.usersRepository.updateById(userId, { refreshToken: hashedRefreshToken });
+    await this.usersService.updateRefreshToken(userId, { refreshToken: hashedRefreshToken });
 
     this.setRefreshTokenCookie(res, refreshToken);
 

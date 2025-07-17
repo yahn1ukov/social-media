@@ -3,17 +3,17 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
 import * as bcrypt from 'bcrypt';
 
-import { UsersRepository } from '@/users/users.repository';
+import { UsersService } from '@/users/users.service';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly usersRepository: UsersRepository) {
+  constructor(private readonly usersService: UsersService) {
     super({ usernameField: 'login' });
   }
 
   async validate(login: string, password: string) {
-    const user = await this.usersRepository.findByUsernameOrEmail(login);
+    const user = await this.usersService.findByUsernameOrEmail(login);
     if (!user) {
       throw new UnauthorizedException('Incorrect username or email');
     }

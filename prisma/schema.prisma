@@ -20,10 +20,26 @@ model User {
   posts        Post[]
   comments     Comment[]
   likes        Like[]
+  followers    Follow[]  @relation("Followers")
+  following    Follow[]  @relation("Following")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  follower    User     @relation("Followers", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId  String   @map("follower_id")
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
 }
 
 model Post {
@@ -44,15 +60,18 @@ model Post {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  text      String   @db.Text
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  String   @map("author_id")
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String   @map("post_id")
+  id        String    @id @default(uuid())
+  text      String    @db.Text
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String    @map("author_id")
+  post      Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String?   @map("post_id")
+  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId  String?   @map("parent_id")
+  replies   Comment[] @relation("Replies")
   likes     Like[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([postId, createdAt])
   @@index([authorId, createdAt])
@@ -67,6 +86,7 @@ model Like {
   postId    String?  @map("post_id")
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId String?  @map("comment_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([userId, postId])
   @@unique([userId, commentId])
@@ -77,15 +97,16 @@ model Like {
 }
 
 model File {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   size        Int
-  contentType String  @map("content_type")
-  url         String  @unique @db.Text
-  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String? @unique @map("user_id")
-  post        Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId      String? @map("post_id")
+  contentType String   @map("content_type")
+  url         String   @unique @db.Text
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?  @unique @map("user_id")
+  post        Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId      String?  @map("post_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([postId])
   @@map("files")

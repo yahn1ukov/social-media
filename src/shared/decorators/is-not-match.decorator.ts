@@ -10,9 +10,7 @@ import {
 export class IsNotMatchConstraint implements ValidatorConstraintInterface {
   validate(value: string, args: ValidationArguments): boolean {
     const [relatedProperty] = args.constraints as [string];
-    const relatedValue = (args.object as Record<string, string>)[
-      relatedProperty
-    ];
+    const relatedValue = (args.object as Record<string, string>)[relatedProperty];
 
     return value !== relatedValue;
   }
@@ -23,10 +21,7 @@ export class IsNotMatchConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export function IsNotMatch(
-  property: string,
-  validationOptions?: ValidationOptions,
-) {
+export function IsNotMatch(property: string, validationOptions?: ValidationOptions) {
   return (object: object, propertyName: string): void => {
     registerDecorator({
       target: object.constructor,

@@ -1,18 +1,16 @@
-import {
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@/shared/prisma/prisma.service';
+import { CreateLikeOptions } from './interfaces/create-like-options.interface';
 
 @Injectable()
 export class LikesRepository {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async create(userId: string, postId?: string, commentId?: string) {
+  async create(userId: string, options: CreateLikeOptions) {
+    const { postId, commentId } = options;
+
     try {
       await this.prismaService.like.create({
         data: {
@@ -28,9 +26,7 @@ export class LikesRepository {
 
   async deleteByUserIdAndPostId(userId: string, postId: string) {
     try {
-      await this.prismaService.like.delete({
-        where: { userId_postId: { userId, postId } },
-      });
+      await this.prismaService.like.delete({ where: { userId_postId: { userId, postId } } });
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -38,9 +34,7 @@ export class LikesRepository {
 
   async deleteByUserIdAndCommentId(userId: string, commentId: string) {
     try {
-      await this.prismaService.like.delete({
-        where: { userId_commentId: { userId, commentId } },
-      });
+      await this.prismaService.like.delete({ where: { userId_commentId: { userId, commentId } } });
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -50,11 +44,9 @@ export class LikesRepository {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       switch (error.code) {
         case 'P2002':
-          throw new ConflictException(
-            'Post or Comment already liked or unliked',
-          );
+          throw new ConflictException('Post or Comment already liked or unliked');
         case 'P2025':
-          throw new NotFoundException('User or Post or Comment not found');
+          throw new NotFoundException('User/Post/Comment not found');
         default:
           throw new InternalServerErrorException('Database error occurred');
       }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { CommentsRepository } from './comments.repository';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @Injectable()
@@ -9,34 +10,30 @@ export class CommentsService {
   constructor(private readonly commentsRepository: CommentsRepository) {}
 
   async createComment(authorId: string, postId: string, dto: CreateCommentDto) {
-    return this.commentsRepository.create(authorId, postId, dto);
+    return this.commentsRepository.create(authorId, dto, { postId });
   }
 
-  async getComments(postId: string, limit: number, cursor?: string) {
-    limit = limit > 0 ? limit : 12;
-
-    return this.commentsRepository.getAllByPostId(postId, limit, cursor);
+  async createReply(parentId: string, authorId: string, dto: CreateCommentDto) {
+    return this.commentsRepository.create(authorId, dto, { parentId });
   }
 
-  async updateComment(
-    id: string,
-    authorId: string,
-    postId: string,
-    dto: UpdateCommentDto,
-  ) {
-    return this.commentsRepository.updateByIdAndAuthorIdAndPostId(
-      id,
-      authorId,
-      postId,
-      dto,
-    );
+  async getComment(id: string) {
+    return this.commentsRepository.getById(id);
   }
 
-  async deleteComment(id: string, authorId: string, postId: string) {
-    return this.commentsRepository.deleteByIdAndAuthorIdAndPostId(
-      id,
-      authorId,
-      postId,
-    );
+  async getPostComments(postId: string, dto: CursorPaginationDto) {
+    return this.commentsRepository.findAllByPostId(postId, dto.limit, dto.cursor);
+  }
+
+  async getCommentReplies(parentId: string, dto: CursorPaginationDto) {
+    return this.commentsRepository.findAllByParentId(parentId, dto.limit, dto.cursor);
+  }
+
+  async updateComment(id: string, authorId: string, dto: UpdateCommentDto) {
+    return this.commentsRepository.updateByIdAndAuthorId(id, authorId, dto);
+  }
+
+  async deleteComment(id: string, authorId: string) {
+    return this.commentsRepository.deleteByIdAndAuthorId(id, authorId);
   }
 }

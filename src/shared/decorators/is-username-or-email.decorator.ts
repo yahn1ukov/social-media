@@ -7,9 +7,7 @@ import {
 } from 'class-validator';
 
 @ValidatorConstraint({ name: 'isUsernameOrEmail', async: false })
-export class IsUsernameOrEmailConstraint
-  implements ValidatorConstraintInterface
-{
+export class IsUsernameOrEmailConstraint implements ValidatorConstraintInterface {
   validate(value: string, args: ValidationArguments): boolean {
     const usernameRegex = /^[a-zA-Z0-9_-]+$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

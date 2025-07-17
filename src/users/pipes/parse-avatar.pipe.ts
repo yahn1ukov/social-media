@@ -1,9 +1,4 @@
-import {
-  FileTypeValidator,
-  Injectable,
-  MaxFileSizeValidator,
-  ParseFilePipe,
-} from '@nestjs/common';
+import { FileTypeValidator, Injectable, MaxFileSizeValidator, ParseFilePipe } from '@nestjs/common';
 
 @Injectable()
 export class ParseAvatarPipe extends ParseFilePipe {

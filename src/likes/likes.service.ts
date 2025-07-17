@@ -7,11 +7,11 @@ export class LikesService {
   constructor(private readonly likesRepository: LikesRepository) {}
 
   async likePost(userId: string, postId: string) {
-    return this.likesRepository.create(userId, postId);
+    return this.likesRepository.create(userId, { postId });
   }
 
   async likeComment(userId: string, commentId: string) {
-    return this.likesRepository.create(userId, commentId);
+    return this.likesRepository.create(userId, { commentId });
   }
 
   async unlikePost(userId: string, postId: string) {

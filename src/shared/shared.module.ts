@@ -6,7 +6,7 @@ import { AppConfigService } from './config/app-config.service';
 import { PrismaService } from './prisma/prisma.service';
 import { MINIO_TOKEN } from './minio/decorators/inject-minio.decorator';
 import { MinioRepository } from './minio/minio.repository';
-import { ParseOptionalUUIDPipe } from './pipes/parse-optional-uuid.pipe';
+import { MinioService } from './minio/minio.service';
 
 @Module({})
 export class SharedModule {
@@ -31,9 +31,9 @@ export class SharedModule {
           inject: [AppConfigService],
         },
         MinioRepository,
-        ParseOptionalUUIDPipe,
+        MinioService,
       ],
-      exports: [AppConfigService, PrismaService, MinioRepository, ParseOptionalUUIDPipe],
+      exports: [AppConfigService, PrismaService, MinioService],
       global: true,
     };
   }

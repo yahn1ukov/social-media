@@ -32,7 +32,7 @@ export class MinioRepository implements OnModuleInit {
     }
   }
 
-  async delete(objectName: string) {
+  async remove(objectName: string) {
     try {
       await this.minioClient.removeObject(this.configService.s3Bucket, objectName);
     } catch (error) {
@@ -40,8 +40,8 @@ export class MinioRepository implements OnModuleInit {
     }
   }
 
-  async deleteMany(objectNames: string[]) {
-    await Promise.all(objectNames.map((objectName) => this.delete(objectName)));
+  async removeMany(objectNames: string[]) {
+    await Promise.all(objectNames.map((objectName) => this.remove(objectName)));
   }
 
   private handleMinioError(error: any) {

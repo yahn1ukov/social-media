@@ -1,8 +1,9 @@
-import { Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Query } from '@nestjs/common';
 
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
 import { FollowsService } from '@/follows/follows.service';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
+import { ParamUUID } from '@/shared/decorators/param-uuid.decorator';
 import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
 
 @Controller('users/me/follows')
@@ -11,7 +12,7 @@ export class CurrentUsersFollowsController {
   constructor(private readonly followsService: FollowsService) {}
 
   @Post()
-  async followUser(@CurrentUser('id') id: string, @Param('id', ParseUUIDPipe) userId: string) {
+  async followUser(@CurrentUser('id') id: string, @ParamUUID('id') userId: string) {
     return this.followsService.followUser(id, userId);
   }
 
@@ -26,7 +27,7 @@ export class CurrentUsersFollowsController {
   }
 
   @Delete()
-  async unfollowUser(@CurrentUser('id') id: string, @Param('id', ParseUUIDPipe) userId: string) {
+  async unfollowUser(@CurrentUser('id') id: string, @ParamUUID('id') userId: string) {
     return this.followsService.unfollowUser(id, userId);
   }
 }

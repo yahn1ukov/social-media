@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { LikesRepository } from './likes.repository';
+import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
 
 @Injectable()
 export class LikesService {
@@ -12,6 +13,10 @@ export class LikesService {
 
   async likeComment(userId: string, commentId: string) {
     return this.likesRepository.create(userId, { commentId });
+  }
+
+  async getLikedPosts(userId: string, dto: CursorPaginationDto) {
+    return this.likesRepository.findAllPostsByLikesUserId(userId, dto.limit, dto.cursor);
   }
 
   async unlikePost(userId: string, postId: string) {

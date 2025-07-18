@@ -1,11 +1,12 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { BaseRepository } from '@/shared/prisma/base.repository';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { CreateCommentOptions } from './interfaces/create-comment-options.interface';
 
 @Injectable()
-export class CommentsRepository {
+export class CommentsRepository extends BaseRepository {
   private readonly selectOptions = {
     id: true,
     text: true,
@@ -14,7 +15,9 @@ export class CommentsRepository {
     createdAt: true,
   };
 
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(prismaService: PrismaService) {
+    super(prismaService);
+  }
 
   async create(authorId: string, data: Omit<Prisma.CommentCreateInput, 'author'>, options: CreateCommentOptions) {
     const { postId, parentId } = options;
@@ -29,7 +32,7 @@ export class CommentsRepository {
         },
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Comment');
     }
   }
 
@@ -37,7 +40,7 @@ export class CommentsRepository {
     try {
       return await this.prismaService.comment.findUniqueOrThrow({ where: { id }, select: this.selectOptions });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Comment');
     }
   }
 
@@ -53,7 +56,7 @@ export class CommentsRepository {
     try {
       await this.prismaService.comment.update({ where: { id, authorId }, data });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Comment');
     }
   }
 
@@ -61,7 +64,7 @@ export class CommentsRepository {
     try {
       await this.prismaService.comment.delete({ where: { id, OR: [{ authorId }, { post: { authorId } }] } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Comment');
     }
   }
 
@@ -75,20 +78,7 @@ export class CommentsRepository {
         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Comment');
     }
-  }
-
-  private handlePrismaError(error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      switch (error.code) {
-        case 'P2025':
-          throw new NotFoundException('Comment not found');
-        default:
-          throw new InternalServerErrorException('Database error occurred');
-      }
-    }
-
-    throw new InternalServerErrorException('Operation failed');
   }
 }

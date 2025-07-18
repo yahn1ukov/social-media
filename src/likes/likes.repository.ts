@@ -1,12 +1,14 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
+import { BaseRepository } from '@/shared/prisma/base.repository';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { CreateLikeOptions } from './interfaces/create-like-options.interface';
 
 @Injectable()
-export class LikesRepository {
-  constructor(private readonly prismaService: PrismaService) {}
+export class LikesRepository extends BaseRepository {
+  constructor(prismaService: PrismaService) {
+    super(prismaService);
+  }
 
   async create(userId: string, options: CreateLikeOptions) {
     const { postId, commentId } = options;
@@ -20,7 +22,34 @@ export class LikesRepository {
         },
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Like');
+    }
+  }
+
+  async findAllPostsByLikesUserId(userId: string, limit: number, cursor?: string) {
+    try {
+      return this.prismaService.like.findMany({
+        where: { userId, postId: { not: null } },
+        select: {
+          id: true,
+          post: {
+            select: {
+              id: true,
+              text: true,
+              hashtags: true,
+              author: { select: { avatar: { select: { url: true } }, username: true } },
+              files: { select: { id: true, contentType: true, url: true } },
+              _count: { select: { likes: true, comments: true } },
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      });
+    } catch (error) {
+      this.handlePrismaError(error, 'Like');
     }
   }
 
@@ -28,7 +57,7 @@ export class LikesRepository {
     try {
       await this.prismaService.like.delete({ where: { userId_postId: { userId, postId } } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Like');
     }
   }
 
@@ -36,22 +65,7 @@ export class LikesRepository {
     try {
       await this.prismaService.like.delete({ where: { userId_commentId: { userId, commentId } } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Like');
     }
-  }
-
-  private handlePrismaError(error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      switch (error.code) {
-        case 'P2002':
-          throw new ConflictException('Post or Comment already liked or unliked');
-        case 'P2025':
-          throw new NotFoundException('User/Post/Comment not found');
-        default:
-          throw new InternalServerErrorException('Database error occurred');
-      }
-    }
-
-    throw new InternalServerErrorException('Operation failed');
   }
 }

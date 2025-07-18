@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PostsRepository } from './posts.repository';
 import { FilesService } from '@/files/files.service';
+import { LikesService } from '@/likes/likes.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -11,6 +12,7 @@ export class PostsService {
   constructor(
     private readonly postsRepository: PostsRepository,
     private readonly filesService: FilesService,
+    private readonly likesService: LikesService,
   ) {}
 
   async createPost(authorId: string, dto: CreatePostDto, media?: Express.Multer.File[]) {
@@ -34,7 +36,7 @@ export class PostsService {
   }
 
   async getLikedPosts(authorId: string, dto: CursorPaginationDto) {
-    return this.postsRepository.findAllByLikesUserId(authorId, dto.limit, dto.cursor);
+    return this.likesService.getLikedPosts(authorId, dto);
   }
 
   async getFeedPosts(authorId: string, dto: CursorPaginationDto) {

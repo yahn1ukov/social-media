@@ -1,12 +1,14 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
+import { BaseRepository } from '@/shared/prisma/base.repository';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { CreateFileOptions } from './interfaces/create-file-options.interface';
 
 @Injectable()
-export class FilesRepository {
-  constructor(private readonly prismaService: PrismaService) {}
+export class FilesRepository extends BaseRepository {
+  constructor(prismaService: PrismaService) {
+    super(prismaService);
+  }
 
   async create(filePath: string, file: Express.Multer.File, options: CreateFileOptions) {
     const { userId, postId } = options;
@@ -23,7 +25,7 @@ export class FilesRepository {
         },
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'File');
     }
   }
 
@@ -50,7 +52,7 @@ export class FilesRepository {
     try {
       await this.prismaService.file.delete({ where: { id } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'File');
     }
   }
 
@@ -58,20 +60,7 @@ export class FilesRepository {
     try {
       await this.prismaService.file.deleteMany({ where: { id: { in: ids } } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'File');
     }
-  }
-
-  private handlePrismaError(error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      switch (error.code) {
-        case 'P2025':
-          throw new NotFoundException('File not found');
-        default:
-          throw new InternalServerErrorException('Database error occurred');
-      }
-    }
-
-    throw new InternalServerErrorException('Operation failed');
   }
 }

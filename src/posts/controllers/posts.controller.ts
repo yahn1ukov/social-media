@@ -1,26 +1,15 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Query,
-  UploadedFiles,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Post, Query, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
 import { PostsService } from '../posts.service';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
 import { CreatePostDto } from '../dto/create-post.dto';
-import { Public } from '@/auth/decorators/public.decorator';
-import { UpdatePostDto } from '../dto/update-post.dto';
 import { ParseMediaPipe } from '../pipes/parse-media.pipe';
+import { Public } from '@/auth/decorators/public.decorator';
 import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
+import { ParamUUID } from '@/shared/decorators/param-uuid.decorator';
+import { UpdatePostDto } from '../dto/update-post.dto';
 
 @Controller('posts')
 @JwtAuth()
@@ -45,15 +34,15 @@ export class PostsController {
 
   @Get(':id')
   @Public()
-  async getPost(@Param('id', ParseUUIDPipe) id: string) {
+  async getPost(@ParamUUID('id') id: string) {
     return this.postsService.getPost(id);
   }
 
   @Patch(':id')
   @UseInterceptors(FilesInterceptor('media', 10))
   async updatePost(
-    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') authorId: string,
+    @ParamUUID('id') id: string,
     @Body() dto: UpdatePostDto,
     @UploadedFiles(ParseMediaPipe) media?: Express.Multer.File[],
   ) {
@@ -61,7 +50,7 @@ export class PostsController {
   }
 
   @Delete(':id')
-  async deletePost(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') authorId: string) {
+  async deletePost(@CurrentUser('id') authorId: string, @ParamUUID('id') id: string) {
     return this.postsService.deletePost(id, authorId);
   }
 }

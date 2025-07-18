@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 
 import { JwtAuth } from '@/auth/decorators/jwt.decorator';
 import { CommentsService } from '@/comments/comments.service';
 import { CurrentUser } from '@/auth/decorators/current-user.decorator';
+import { ParamUUID } from '@/shared/decorators/param-uuid.decorator';
 import { CreateCommentDto } from '@/comments/dto/create-comment.dto';
 import { Public } from '@/auth/decorators/public.decorator';
 import { CursorPaginationDto } from '@/shared/dto/cursor-pagination.dto';
@@ -15,7 +16,7 @@ export class PostsCommentsController {
   @Post()
   async createPostComment(
     @CurrentUser('id') authorId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @ParamUUID('id') id: string,
     @Body() dto: CreateCommentDto,
   ) {
     return this.commentsService.createComment(authorId, id, dto);
@@ -23,7 +24,7 @@ export class PostsCommentsController {
 
   @Get()
   @Public()
-  async getPostComments(@Param('id', ParseUUIDPipe) id: string, @Query() dto: CursorPaginationDto) {
+  async getPostComments(@ParamUUID('id') id: string, @Query() dto: CursorPaginationDto) {
     return this.commentsService.getPostComments(id, dto);
   }
 }

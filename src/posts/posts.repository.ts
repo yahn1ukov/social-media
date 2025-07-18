@@ -1,10 +1,11 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { BaseRepository } from '@/shared/prisma/base.repository';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 
 @Injectable()
-export class PostsRepository {
+export class PostsRepository extends BaseRepository {
   private readonly selectOptions = {
     id: true,
     text: true,
@@ -15,7 +16,9 @@ export class PostsRepository {
     createdAt: true,
   };
 
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(prismaService: PrismaService) {
+    super(prismaService);
+  }
 
   async create(authorId: string, data: Omit<Prisma.PostCreateInput, 'author'>) {
     try {
@@ -24,7 +27,7 @@ export class PostsRepository {
         select: { id: true },
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Post');
     }
   }
 
@@ -32,31 +35,27 @@ export class PostsRepository {
     try {
       return await this.prismaService.post.findUniqueOrThrow({ where: { id }, select: this.selectOptions });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Post');
     }
   }
 
   async findAll(limit: number, cursor?: string) {
-    return this.findManyWithCursor({}, limit, cursor);
+    return this.findManyWithCursor(limit, cursor);
   }
 
   async findAllByAuthorId(authorId: string, limit: number, cursor?: string) {
-    return this.findManyWithCursor({ authorId }, limit, cursor);
-  }
-
-  async findAllByLikesUserId(userId: string, limit: number, cursor?: string) {
-    return this.findManyWithCursor({ likes: { some: { userId } } }, limit, cursor);
+    return this.findManyWithCursor(limit, cursor, { authorId });
   }
 
   async findAllByAuthorFollowersFollowerId(userId: string, limit: number, cursor?: string) {
-    return this.findManyWithCursor({ author: { followers: { some: { followerId: userId } } } }, limit, cursor);
+    return this.findManyWithCursor(limit, cursor, { author: { followers: { some: { followerId: userId } } } });
   }
 
   async updateByIdAndAuthorId(id: string, authorId: string, data: Prisma.PostUpdateInput) {
     try {
       await this.prismaService.post.update({ where: { id, authorId }, data });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Post');
     }
   }
 
@@ -64,11 +63,11 @@ export class PostsRepository {
     try {
       await this.prismaService.post.delete({ where: { id, authorId } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Post');
     }
   }
 
-  private async findManyWithCursor(where: Prisma.PostWhereInput, limit: number, cursor?: string) {
+  private async findManyWithCursor(limit: number, cursor?: string, where: Prisma.PostWhereInput = {}) {
     try {
       return await this.prismaService.post.findMany({
         where,
@@ -78,20 +77,7 @@ export class PostsRepository {
         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'Post');
     }
-  }
-
-  private handlePrismaError(error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      switch (error.code) {
-        case 'P2025':
-          throw new NotFoundException('Post not found');
-        default:
-          throw new InternalServerErrorException('Database error occurred');
-      }
-    }
-
-    throw new InternalServerErrorException('Operation failed');
   }
 }

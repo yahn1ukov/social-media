@@ -1,17 +1,20 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { BaseRepository } from '@/shared/prisma/base.repository';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 
 @Injectable()
-export class UsersRepository {
-  constructor(private readonly prismaService: PrismaService) {}
+export class UsersRepository extends BaseRepository {
+  constructor(prismaService: PrismaService) {
+    super(prismaService);
+  }
 
   async create(data: Prisma.UserCreateInput) {
     try {
       return await this.prismaService.user.create({ data, select: { id: true, username: true } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'User');
     }
   }
 
@@ -31,7 +34,7 @@ export class UsersRepository {
         },
       });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'User');
     }
   }
 
@@ -60,7 +63,7 @@ export class UsersRepository {
     try {
       await this.prismaService.user.update({ where: { id }, data });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'User');
     }
   }
 
@@ -68,22 +71,7 @@ export class UsersRepository {
     try {
       await this.prismaService.user.delete({ where: { id } });
     } catch (error) {
-      this.handlePrismaError(error);
+      this.handlePrismaError(error, 'User');
     }
-  }
-
-  private handlePrismaError(error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      switch (error.code) {
-        case 'P2002':
-          throw new ConflictException('Username or email already exists');
-        case 'P2025':
-          throw new NotFoundException('User not found');
-        default:
-          throw new InternalServerErrorException('Database error occurred');
-      }
-    }
-
-    throw new InternalServerErrorException('Operation failed');
   }
 }
